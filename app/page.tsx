@@ -5,21 +5,19 @@ type Row = { filename: string; src?: string; alt_text: string; tags: string[] };
 type Resp = { alt_text: string; tags: string[] } | { error: string };
 
 export default function Home() {
-  // -------- state --------
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lang, setLang] = useState<"fr" | "en" | "es">("fr");
   const [style, setStyle] = useState<"neutral" | "ecommerce" | "editorial">("neutral");
   const [left, setLeft] = useState(0);
-  const MAX_FREE = 10; // sobre et crédible
+  const MAX_FREE = 10;
 
   useEffect(() => {
     const used = Number(localStorage.getItem("free_uses") || "0");
     setLeft(Math.max(0, MAX_FREE - used));
   }, []);
 
-  // -------- actions --------
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     setErr(null);
     const files = Array.from(e.target.files || []);
@@ -29,7 +27,7 @@ export default function Home() {
     const newRows: Row[] = [];
 
     for (const f of files) {
-      if (!["image/jpeg","image/png","image/webp"].includes(f.type)) { setErr("Formats acceptés : JPG, PNG, WEBP"); continue; }
+      if (!["image/jpeg","image/png","image/webp"].includes(f.type)) { setErr("Formats : JPG, PNG, WEBP"); continue; }
       if (f.size > 5 * 1024 * 1024) { setErr("Image > 5 Mo ignorée"); continue; }
       if (left <= 0) { setErr("Essais gratuits épuisés"); break; }
 
@@ -43,7 +41,6 @@ export default function Home() {
           body: JSON.stringify({ imageBase64: b64, lang, style }),
         });
         const j: Resp = await r.json();
-
         if ("error" in j) { setErr(j.error || "Erreur serveur"); continue; }
 
         newRows.push({ filename: f.name, src: previewURL, alt_text: j.alt_text || "", tags: j.tags || [] });
@@ -73,145 +70,132 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
-  // -------- UI --------
   return (
-    <main className="min-h-screen bg-white text-zinc-900">
+    <main>
       {/* NAV */}
-      <nav className="sticky top-0 z-20 border-b bg-white/80 backdrop-blur">
+      <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-          <div className="font-semibold tracking-tight">Tagos.io</div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--brand)] text-white text-[12px] font-bold">T</span>
+            <span className="font-semibold tracking-tight">Tagos.io</span>
+          </div>
           <div className="hidden sm:flex items-center gap-6 text-sm">
-            <a href="#how" className="hover:underline">Comment ça marche</a>
+            <a href="#how" className="hover:underline">Fonctionnement</a>
             <a href="#pricing" className="hover:underline">Tarifs</a>
-            <a href="#try" className="px-3 py-1 rounded border hover:bg-zinc-50">Essayer</a>
+            <a href="#try" className="btn">Essayer</a>
           </div>
         </div>
       </nav>
 
-      {/* HERO (sobre, centré sur la valeur) */}
-      <header className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+      {/* HERO */}
+      <header className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
         <div className="grid gap-10 sm:grid-cols-2 items-center">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.1]">
-              Des balises ALT utiles.<br />Automatiquement.
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-[1.05]">
+              Des balises ALT <span className="text-[var(--brand)]">claires</span>.<br/>En un clic.
             </h1>
-            <p className="mt-4 text-zinc-600">
-              Déposez vos images, obtenez des textes ALT clairs et quelques tags pertinents pour le SEO.
-              Compatible WordPress, Shopify, Webflow et HTML.
+            <p className="mt-4 text-[color:var(--muted)]">
+              Déposez vos images, obtenez des textes ALT utiles et quelques tags SEO. Compatible WordPress, Shopify, Webflow et HTML.
             </p>
-            <div className="mt-6 flex gap-3">
-              <a href="#try" className="px-4 py-2 rounded bg-black text-white hover:opacity-90">Essayer gratuitement</a>
-              <a href="#why" className="px-4 py-2 rounded border hover:bg-zinc-50">Pourquoi c’est utile</a>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a href="#try" className="btn btn-primary">Essayer gratuitement</a>
+              <a href="#why" className="btn">Pourquoi c’est utile</a>
             </div>
-            <p className="mt-3 text-xs text-zinc-500">Pas de compte • Pas de stockage d’images • 10 essais gratuits</p>
+            <p className="mt-3 text-xs text-slate-500">Pas de compte • 10 essais gratuits • Aucune image stockée</p>
           </div>
-          <div className="rounded-2xl border p-4 bg-zinc-50">
+
+          <div className="card p-5">
             <div className="text-sm font-medium mb-2">Exemple de sortie</div>
             <div className="text-sm">
               <span className="font-semibold">ALT :</span>{" "}
-              <span className="text-zinc-700">Chaussures en cuir noir pour homme sur fond blanc</span>
+              <span className="text-slate-700">Chaussures en cuir noir pour homme sur fond blanc</span>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {["chaussures","cuir","noir","homme","mode"].map((t,i)=>
-                <span key={i} className="text-xs px-2 py-1 border rounded bg-white">{t}</span>
+                <span key={i} className="chip">{t}</span>
               )}
             </div>
-            <div className="mt-3 text-xs text-zinc-500">Généré par IA • format court et descriptif</div>
+            <div className="mt-4 text-xs text-slate-500">Généré par IA — format court et descriptif</div>
           </div>
         </div>
 
-        {/* Social proof simple (logos placeholders) */}
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 opacity-70">
+        {/* logos discrets */}
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 opacity-80">
           {["WordPress","Shopify","Webflow","HTML"].map((n,i)=>(
-            <div key={i} className="text-center text-xs border rounded p-2">{n}</div>
+            <div key={i} className="text-center text-xs card p-2">{n}</div>
           ))}
         </div>
       </header>
 
       {/* WHY */}
-      <section id="why" className="mx-auto max-w-6xl px-4 py-10 border-t">
-        <h2 className="text-xl font-semibold mb-5">Pourquoi les ALT comptent (et pourquoi Tagos aide)</h2>
-        <div className="grid sm:grid-cols-3 gap-3 text-sm">
-          <div className="border rounded-lg p-3">
-            <b>Visibilité</b> — Une image bien décrite ressort mieux sur Google Images.
-          </div>
-          <div className="border rounded-lg p-3">
-            <b>Gain de temps</b> — Évitez de rédiger chaque ALT à la main.
-          </div>
-          <div className="border rounded-lg p-3">
-            <b>Accessibilité</b> — Un ALT clair aide aussi vos visiteurs non voyants.
-          </div>
+      <section id="why" className="mx-auto max-w-6xl px-4 py-10 border-t border-slate-200">
+        <h2 className="text-xl font-semibold mb-5">Pourquoi les ALT comptent</h2>
+        <div className="grid sm:grid-cols-3 gap-4 text-sm">
+          <div className="card p-4"><b>Visibilité</b> — Descriptions = meilleures positions sur Google Images.</div>
+          <div className="card p-4"><b>Temps gagné</b> — Évitez de rédiger chaque ALT à la main.</div>
+          <div className="card p-4"><b>Accessibilité</b> — Un ALT clair aide tous les visiteurs.</div>
         </div>
       </section>
 
       {/* HOW */}
-      <section id="how" className="mx-auto max-w-6xl px-4 py-10 border-t">
-        <h2 className="text-xl font-semibold mb-5">Comment ça marche</h2>
+      <section id="how" className="mx-auto max-w-6xl px-4 py-10 border-t border-slate-200">
+        <h2 className="text-xl font-semibold mb-5">Fonctionnement</h2>
         <ol className="grid sm:grid-cols-3 gap-4 text-sm">
-          <li className="border rounded-lg p-4 bg-zinc-50">
-            <div className="text-2xl mb-1">1</div>
-            Téléversez vos images (JPG, PNG, WEBP).
-          </li>
-          <li className="border rounded-lg p-4 bg-zinc-50">
-            <div className="text-2xl mb-1">2</div>
-            L’IA génère un ALT court + 3–5 tags pertinents.
-          </li>
-          <li className="border rounded-lg p-4 bg-zinc-50">
-            <div className="text-2xl mb-1">3</div>
-            Copiez, ou téléchargez un CSV pour import dans votre CMS.
-          </li>
+          <li className="card p-4"><div className="text-2xl mb-1">1</div>Téléversez vos images (JPG, PNG, WEBP).</li>
+          <li className="card p-4"><div className="text-2xl mb-1">2</div>L’IA génère un ALT court + 3–5 tags pertinents.</li>
+          <li className="card p-4"><div className="text-2xl mb-1">3</div>Copiez, ou téléchargez un CSV pour votre CMS.</li>
         </ol>
       </section>
 
-      {/* TOOL (ton produit intégré) */}
-      <section id="try" className="mx-auto max-w-6xl px-4 py-12 border-t">
+      {/* TOOL */}
+      <section id="try" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
         <div className="flex flex-wrap items-center gap-3">
-          <select value={lang} onChange={e=>setLang(e.target.value as any)} className="border rounded px-2 py-1 bg-white">
+          <select value={lang} onChange={e=>setLang(e.target.value as any)} className="btn">
             <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option>
           </select>
-          <select value={style} onChange={e=>setStyle(e.target.value as any)} className="border rounded px-2 py-1 bg-white">
+          <select value={style} onChange={e=>setStyle(e.target.value as any)} className="btn">
             <option value="neutral">Neutre</option><option value="ecommerce">E-commerce</option><option value="editorial">Éditorial</option>
           </select>
-          <span className="text-xs text-zinc-600 ml-auto">Essais restants : <b>{left}</b></span>
+          <span className="text-xs text-slate-600 ml-auto">Essais restants : <b>{left}</b></span>
         </div>
 
-        <div className="mt-3 rounded-xl border p-4 bg-zinc-50">
+        <div className="mt-3 card p-4 bg-slate-50">
           <input
             type="file"
             accept="image/*"
             multiple
             onChange={onFiles}
-            className="block w-full text-sm file:mr-4 file:rounded file:border-0 file:bg-black file:px-4 file:py-2 file:text-white file:hover:opacity-90"
+            className="block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-[var(--brand)] file:px-4 file:py-2 file:text-white file:hover:bg-[var(--brand-700)]"
           />
-          <p className="text-xs text-zinc-500 mt-2">Max 5 Mo par image.</p>
+          <p className="text-xs text-slate-500 mt-2">Max 5 Mo par image.</p>
           {busy && <p className="text-sm mt-2 animate-pulse">Analyse en cours…</p>}
           {err && <p className="text-sm mt-2 text-red-600">{err}</p>}
 
-          <div className="mt-4 bg-white border rounded p-3">
+          <div className="mt-4 card p-3 bg-white">
             {rows.length === 0 ? (
-              <p className="text-sm text-zinc-600">Déposez des images pour générer vos balises.</p>
+              <p className="text-sm text-slate-600">Déposez des images pour générer vos balises.</p>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-semibold">Résultats ({rows.length})</div>
-                  <button onClick={downloadCSV} className="text-xs px-3 py-1 border rounded hover:bg-zinc-50">Télécharger CSV</button>
+                  <button onClick={downloadCSV} className="btn text-xs">Télécharger CSV</button>
                 </div>
                 <ul className="space-y-3">
                   {rows.map((r, i) => (
-                    <li key={i} className="border rounded p-3">
+                    <li key={i} className="card p-3">
                       <div className="flex items-start gap-3">
-                        {r.src && <img src={r.src} alt="" className="w-20 h-20 object-cover rounded border" />}
+                        {r.src && <img src={r.src} alt="" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />}
                         <div className="flex-1">
                           <div className="text-sm font-medium">{r.filename}</div>
                           <div className="mt-1 text-sm"><span className="font-semibold">ALT :</span> {r.alt_text || "—"}</div>
                           <div className="mt-1 flex flex-wrap gap-2">
                             {r.tags?.length ? r.tags.map((t, k)=>(
-                              <span key={k} className="text-xs px-2 py-1 border rounded bg-zinc-50">{t}</span>
-                            )) : <span className="text-xs text-zinc-500">—</span>}
+                              <span key={k} className="chip">{t}</span>
+                            )) : <span className="text-xs text-slate-500">—</span>}
                           </div>
                           <div className="mt-2 flex gap-2">
-                            <button onClick={()=>navigator.clipboard.writeText(r.alt_text)} className="text-xs px-3 py-1 border rounded hover:bg-zinc-50">Copier l’ALT</button>
-                            <button onClick={()=>navigator.clipboard.writeText(r.tags.join(", "))} className="text-xs px-3 py-1 border rounded hover:bg-zinc-50">Copier les tags</button>
+                            <button onClick={()=>navigator.clipboard.writeText(r.alt_text)} className="btn text-xs">Copier l’ALT</button>
+                            <button onClick={()=>navigator.clipboard.writeText(r.tags.join(", "))} className="btn text-xs">Copier les tags</button>
                           </div>
                         </div>
                       </div>
@@ -224,81 +208,50 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PRICING (sobre, crédible) */}
-      <section id="pricing" className="mx-auto max-w-6xl px-4 py-12 border-t">
+      {/* PRICING (sobre) */}
+      <section id="pricing" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
         <h2 className="text-xl font-semibold mb-5">Tarifs simples</h2>
         <div className="grid sm:grid-cols-3 gap-4">
-          <div className="border rounded-xl p-4">
+          <div className="card p-5">
             <div className="text-sm font-semibold">Starter</div>
             <div className="text-2xl font-bold mt-1">4,90 €</div>
-            <div className="text-xs text-zinc-600 mt-1">100 images</div>
+            <div className="text-xs text-slate-600 mt-1">100 images</div>
             <ul className="text-sm mt-3 space-y-1">
-              <li>• Génération ALT + tags</li>
-              <li>• CSV export</li>
-              <li>• Assistance email</li>
+              <li>• ALT + tags</li><li>• Export CSV</li><li>• Email support</li>
             </ul>
-            <button className="mt-4 w-full text-sm px-3 py-2 rounded border hover:bg-zinc-50">Choisir</button>
+            <button className="btn w-full mt-4">Choisir</button>
           </div>
-          <div className="border rounded-xl p-4 bg-zinc-50">
+          <div className="card p-5 border-[var(--brand)] ring-1 ring-[var(--brand)]">
             <div className="text-sm font-semibold">Pro</div>
             <div className="text-2xl font-bold mt-1">19,90 €</div>
-            <div className="text-xs text-zinc-600 mt-1">1000 images</div>
+            <div className="text-xs text-slate-600 mt-1">1000 images</div>
             <ul className="text-sm mt-3 space-y-1">
-              <li>• Génération ALT + tags</li>
-              <li>• CSV + mode lot</li>
-              <li>• Priorité support</li>
+              <li>• ALT + tags</li><li>• CSV + lot</li><li>• Support prioritaire</li>
             </ul>
-            <button className="mt-4 w-full text-sm px-3 py-2 rounded bg-black text-white hover:opacity-90">Choisir</button>
+            <button className="btn btn-primary w-full mt-4">Choisir</button>
           </div>
-          <div className="border rounded-xl p-4">
+          <div className="card p-5">
             <div className="text-sm font-semibold">Entreprise</div>
             <div className="text-2xl font-bold mt-1">Sur devis</div>
-            <div className="text-xs text-zinc-600 mt-1">10 000+ images</div>
+            <div className="text-xs text-slate-600 mt-1">10 000+ images</div>
             <ul className="text-sm mt-3 space-y-1">
-              <li>• API / plugin</li>
-              <li>• SLA & RGPD</li>
-              <li>• Intégration dédiée</li>
+              <li>• API / plugin</li><li>• SLA & RGPD</li><li>• Intégration dédiée</li>
             </ul>
-            <a href="mailto:contact@tagos.io" className="mt-4 block w-full text-center text-sm px-3 py-2 rounded border hover:bg-zinc-50">Nous contacter</a>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="mx-auto max-w-6xl px-4 py-12 border-t">
-        <h2 className="text-xl font-semibold mb-5">Questions fréquentes</h2>
-        <div className="grid sm:grid-cols-2 gap-4 text-sm">
-          <div className="border rounded-lg p-3">
-            <b>Stockez-vous les images ?</b>
-            <p className="text-zinc-600 mt-1">Non. Traitement à la demande, aucune image n’est conservée.</p>
-          </div>
-          <div className="border rounded-lg p-3">
-            <b>Puis-je utiliser sur WordPress / Shopify ?</b>
-            <p className="text-zinc-600 mt-1">Oui. Copiez l’ALT ou importez le CSV. Un plugin arrive.</p>
-          </div>
-          <div className="border rounded-lg p-3">
-            <b>Langues disponibles ?</b>
-            <p className="text-zinc-600 mt-1">Français, anglais, espagnol (sélecteur en haut de l’outil).</p>
-          </div>
-          <div className="border rounded-lg p-3">
-            <b>Essai gratuit ?</b>
-            <p className="text-zinc-600 mt-1">10 images gratuites pour tester sereinement.</p>
+            <a href="mailto:contact@tagos.io" className="btn w-full mt-4">Nous contacter</a>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t">
-        <div className="mx-auto max-w-6xl px-4 py-8 text-xs text-zinc-600">
-          © {new Date().getFullYear()} Tagos.io — <a className="underline" href="mailto:contact@tagos.io">contact@tagos.io</a> •
-          <span> </span>Nous ne stockons pas vos images. Données traitées à la demande.
+      <footer className="border-t border-slate-200">
+        <div className="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-600">
+          © {new Date().getFullYear()} Tagos.io — <a className="underline" href="mailto:contact@tagos.io">contact@tagos.io</a> • Nous ne stockons pas vos images.
         </div>
       </footer>
     </main>
   );
 }
 
-/* utils */
 function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
