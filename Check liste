@@ -1,0 +1,164 @@
+# 🌍 TAGOS.IO — CHECKLIST DE LANCEMENT INTERNATIONAL (v1.0)
+
+Produit : **Tagos.io — Générateur automatique de balises ALT et tags SEO pour images**
+Public : international (FR / EN / ES)
+Type : SaaS no-code (Vercel + OpenAI + Stripe)
+Objectif : lancement public prêt à monétiser et conforme RGPD / global
+
+---
+
+## 🧭 1. IDENTITÉ & DOMAINES
+- [ ] Domaine principal : **tagos.io** pointé sur Vercel (`www.` redirige vers le root)
+- [ ] E-mails pro : `support@tagos.io` et `contact@tagos.io`
+- [ ] DNS configuré : SPF, DKIM, DMARC ✅
+- [ ] Logo carré (SVG + PNG 512x512)
+- [ ] Favicon présent dans `/public/favicon.ico`
+- [ ] Version “dark/light” logo si besoin
+
+---
+
+## ⚖️ 2. LÉGAL & CONFORMITÉ INTERNATIONALE
+### Pages obligatoires
+- [ ] `/legal` : mentions légales (entreprise, hébergeur, contact)
+- [ ] `/privacy` : politique de confidentialité (FR/EN/ES)
+- [ ] `/terms` : conditions d’utilisation (FR/EN/ES)
+- [ ] `/cookies` : politique cookies simple ou bannière consentement (si analytics)
+
+### RGPD / GDPR
+- [ ] Délégué : `privacy@tagos.io`
+- [ ] Registre de traitements (Google Drive/Notion)
+- [ ] DPA listant les sous-traitants :
+  - Vercel (hébergement)
+  - OpenAI (analyse IA)
+  - Stripe (paiement)
+- [ ] Conservation limitée (pas de stockage d’images)
+- [ ] Mention explicite du droit d’accès/suppression
+
+### Légal international
+- [ ] Ajout d’un encadré “Compliance” dans footer :
+  - “Compliant with GDPR (EU) and CCPA (US)”
+  - Lien vers la politique de confidentialité
+
+---
+
+## 💳 3. PAIEMENTS & FACTURATION
+- [ ] Stripe Dashboard configuré :
+  - Produit “Starter” (100 images)
+  - Produit “Pro” (1000 images)
+  - Produit “Enterprise” (sur devis)
+- [ ] Stripe Tax activé (TVA Europe)
+- [ ] Reçus personnalisés avec logo et coordonnées
+- [ ] Lien de paiement Stripe (option temporaire)
+- [ ] Page `/pricing` avec CTA actifs
+- [ ] Politique de remboursement affichée (7 jours si crédits non utilisés)
+
+---
+
+## 🧠 4. PRODUIT & LIMITES
+- [ ] Taille max image : **5 Mo**
+- [ ] Formats acceptés : JPG / PNG / WEBP
+- [ ] Pas de stockage → “Vos images ne sont jamais conservées.”
+- [ ] Quota gratuit : 10 images / IP / jour
+- [ ] Gestion erreur : message clair si OpenAI indisponible
+- [ ] Multilingue : FR / EN / ES (détection auto ou menu langue)
+- [ ] Interface claire : bouton “Réessayer” après upload
+
+---
+
+## 📈 5. ANALYTICS & LOGS
+- [ ] **Plausible.io** (ou Vercel Analytics) configuré
+- [ ] Events suivis :
+  - `upload_start`
+  - `upload_success`
+  - `upload_error`
+  - `csv_downloaded`
+  - `pricing_click`
+- [ ] Logs Vercel activés (niveau error)
+- [ ] (Option) Sentry intégré pour les erreurs backend
+
+---
+
+## 🔍 6. SEO & PERFORMANCE
+- [ ] Meta Title, Description, et OG tags propres
+- [ ] Image de partage (`/public/og-image.png`, 1200x630)
+- [ ] Sitemap.xml & robots.txt dans `/public`
+- [ ] Vitesse testée sur [pagespeed.web.dev](https://pagespeed.web.dev/)
+- [ ] i18n SEO : balises `<link rel="alternate" hreflang="...">`
+- [ ] Accessibilité AA : contrastes, textes ALT, focus clairs
+
+---
+
+## 🧩 7. SUPPORT & COMMUNICATION
+- [ ] Page `/contact` ou lien mail visible
+- [ ] FAQ courte (stockage, langues, quotas, essais)
+- [ ] 5 modèles de réponse support (Notion/Drive) :
+  - Erreur upload
+  - Quota atteint
+  - Facture/Stripe
+  - Remboursement
+  - Suggestion/feature
+- [ ] Page `/status` (texte statique “Tous les systèmes sont opérationnels”)
+
+---
+
+## 📣 8. MARKETING DE LANCEMENT
+- [ ] Titre clair : “ALT & Tags SEO automatiques pour vos images.”
+- [ ] Sous-titre : “Optimisez vos images en un clic, sans plugin, sans stockage.”
+- [ ] GIF démonstration avant/après
+- [ ] Capture d’écran dans `/public/demo.png`
+- [ ] CTA principal : “Essayer gratuitement”
+- [ ] Posts de lancement :
+  - LinkedIn (FR/EN)
+  - Reddit r/SEO / r/webdev
+  - Product Hunt fiche simple
+  - Indie Hackers présentation
+
+---
+
+## 📱 9. QUALITÉ & TESTS AVANT OUVERTURE
+- [ ] Upload fonctionne sur desktop + mobile
+- [ ] Message clair si format non supporté
+- [ ] Interface multilingue fonctionnelle
+- [ ] Liens internes et footer OK
+- [ ] CTA Pricing et Contact fonctionnels
+- [ ] Analytics enregistre un event (pageview)
+- [ ] Temps moyen d’upload < 3s
+- [ ] Responsive design iPhone / Android validé
+
+---
+
+## 🗂️ 10. DOSSIER INTERNE
+- [ ] `Tagos_Legal_Docs/` (Privacy, Terms, Legal)
+- [ ] `Tagos_FAQ_&_Support.md`
+- [ ] `Tagos_Stripe_Links.csv`
+- [ ] `Tagos_PressKit/` (logo, favicon, screenshot)
+- [ ] `Tagos_Analytics_Config.md` (clé Plausible ou Vercel)
+- [ ] `Tagos_QA_Report.md` (résultats tests avant release)
+
+---
+
+## 🚀 ORDRE RECOMMANDÉ (≈ 2h sans code)
+1. Domaine + e-mails pro  
+2. Pages légales (3 langues)  
+3. Analytics (Plausible ou Vercel)  
+4. SEO de base (robots/sitemap/meta)  
+5. Textes UI & messages d’erreur  
+6. Stripe (liens de paiement ou test mode)  
+7. Tests QA complet  
+8. Publication + post LinkedIn international  
+
+---
+
+## 🌐 MULTILINGUE (i18n)
+- [ ] Détection automatique du navigateur (`navigator.language`)
+- [ ] Sélecteur manuel FR / EN / ES en haut à droite
+- [ ] Dossiers `/app/[lang]/page.tsx` :
+  - `/fr` → Français
+  - `/en` → English
+  - `/es` → Español
+- [ ] Textes isolés dans `/locales/fr.json`, `/locales/en.json`, `/locales/es.json`
+- [ ] Traduction complète UI, privacy, terms, pricing
+
+---
+
+### ✅ Objectif Go-Live : Site propre, conforme, multilingue et démontrable publiquement.
