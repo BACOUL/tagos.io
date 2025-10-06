@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
     let lang = "fr";
     let style: "neutral" | "ecommerce" | "editorial" = "neutral";
 
-    // Entrées: JSON {imageBase64, lang, style} OU form-data {file, lang, style}
     if (ct.includes("application/json")) {
       const j = await req.json();
       if (typeof j.imageBase64 === "string") imageBase64 = j.imageBase64;
@@ -50,7 +49,6 @@ export async function POST(req: NextRequest) {
     if (!imageBase64) return bad("imageBase64 (ou file) manquant.");
     if (imageBase64.length > 7_000_000) return bad("Image trop lourde (> ~5 Mo).");
 
-    // Pas de clé -> mode démo
     if (!process.env.OPENAI_API_KEY) return demo(filename);
 
     const styleHint =
@@ -87,7 +85,7 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
       body: JSON.stringify(body),
     });
 
-    if (resp.status === 429) return demo(filename); // quota épuisé -> démo
+    if (resp.status === 429) return demo(filename);
     if (!resp.ok) {
       const t = await resp.text();
       return bad(`OpenAI error: ${t}`, 500);
@@ -96,7 +94,6 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
     const data = await resp.json();
     const raw = (data.output_text ?? data.content?.[0]?.text ?? "").trim();
 
-    // Parse sécurisé (jamais null à la suite)
     let parsed: any;
     try {
       parsed = JSON.parse(raw);
@@ -114,4 +111,4 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
   } catch (e: any) {
     return bad(e?.message || "Erreur serveur", 500);
   }
-}
+               }
