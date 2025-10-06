@@ -1,20 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 type GenResult = { alt_text: string; tags: string[] };
+
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<GenResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
 
-  async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Nettoyage URL d’aperçu
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function isImage(file: File) {
+    return /^image\/(png|jpe?g|webp|gif|bmp|tiff|svg\+xml)$/.test(file.type);
+  }
+
+  function validateFile(file: File): string | null {
+    if (!isImage(file)) return "Format non supporté. Utilisez JPG, PNG ou WEBP.";
+    if (file.size > 5 * 1024 * 1024) return "Fichier trop volumineux (max 5 Mo).";
+    return null;
+  }
+
+  async function handleFile(file: File) {
+    const err = validateFile(file);
+    if (err) {
+      setErrorMsg(err);
+      setResult(null);
+      return;
+    }
 
     setBusy(true);
     setResult(null);
     setErrorMsg(null);
+    setFileName(file.name);
+
+    // aperçu
+    const url = URL.createObjectURL(file);
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return url;
+    });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -25,15 +60,61 @@ export default function HomePage() {
 
       if (!res.ok || data?.error) {
         setErrorMsg(data?.error ?? "Erreur temporaire. Merci de réessayer.");
+        setResult(null);
         return;
       }
       setResult(data as GenResult);
     } catch (err) {
       console.error(err);
       setErrorMsg("Erreur réseau. Vérifiez votre connexion puis réessayez.");
+      setResult(null);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await handleFile(file);
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  function onDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(true);
+  }
+  function onDragLeave() {
+    setDragging(false);
+  }
+
+  function copy(text: string) {
+    navigator.clipboard.writeText(text);
+  }
+
+  function downloadCSV() {
+    if (!result) return;
+    const rows = [
+      ["filename", "alt", "tags"],
+      [fileName ?? "image", result.alt_text, result.tags.join("|")],
+    ];
+    const csv = rows.map(r =>
+      r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (fileName ?? "alt-tags") + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -120,20 +201,60 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TOOL */}
+      {/* TOOL — zone pro */}
       <section id="try" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-5">Essayez maintenant</h2>
 
-        <label className="block text-sm font-medium mb-2 text-slate-700">Téléversez une image :</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleUpload}
-          disabled={busy}
-        />
-        <p className="mt-2 text-xs text-slate-500">
-          Formats : JPG, PNG, WEBP — Taille max : 5 Mo. Aucune image n’est conservée.
-        </p>
+        {/* Dropzone */}
+        <div
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          className={[
+            "rounded-xl border-2 border-dashed p-6 transition",
+            dragging ? "border-indigo-400 bg-indigo-50/40" : "border-slate-300 bg-white"
+          ].join(" ")}
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <div className="font-medium">Glissez une image ici</div>
+              <div className="text-xs text-slate-500 mt-1">ou</div>
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="btn mt-2"
+                type="button"
+              >
+                Choisir un fichier
+              </button>
+            </div>
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleInputChange}
+              disabled={busy}
+              className="hidden"
+            />
+
+            {previewUrl && (
+              <div className="w-full sm:w-auto">
+                <img
+                  src={previewUrl}
+                  alt="aperçu"
+                  className="h-28 w-28 object-cover rounded-lg border border-slate-200 mx-auto"
+                />
+                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">
+                  {fileName}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="mt-3 text-xs text-slate-500">
+            Formats : JPG, PNG, WEBP — Taille max : 5 Mo. Aucune image n’est conservée.
+          </p>
+        </div>
 
         {busy && (
           <div className="mt-4 animate-pulse card p-5 bg-slate-50 text-slate-400 text-sm">
@@ -157,19 +278,10 @@ export default function HomePage() {
                 <span key={i} className="chip">{tag}</span>
               ))}
             </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => navigator.clipboard.writeText(result.alt_text)}
-                className="btn"
-              >
-                Copier l’ALT
-              </button>
-              <button
-                onClick={() => navigator.clipboard.writeText(result.tags.join(', '))}
-                className="btn"
-              >
-                Copier les tags
-              </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
+              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les tags</button>
+              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
             </div>
           </div>
         )}
@@ -252,4 +364,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-}
+            }
