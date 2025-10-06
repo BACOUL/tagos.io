@@ -1,29 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/** Réponse JSON uniforme */
-function ok(data: any, init: number = 200) {
+function ok(data: any, status = 200) {
   return new NextResponse(JSON.stringify(data), {
-    status: init,
+    status,
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
 }
 function bad(message: string, code = 400) {
   return ok({ error: message }, code);
 }
-
-/** Convertit un File (form-data) en base64 (sans prefixe data:) */
 async function fileToBase64(file: File): Promise<string> {
   const buf = Buffer.from(await file.arrayBuffer());
   return buf.toString("base64");
 }
 
-/** Petites valeurs par défaut */
-const DEMO_ALT = (name: string) =>
-  `Image de démonstration : ${name || "photo"}`;
 const DEMO_TAGS = ["démo", "SEO", "optimisation", "IA", "Tagos"];
-
-/** Fallback démo (sans clé / quota épuisé) */
-function demoResponse(filename?: string) {
+const DEMO_ALT = (name: string) => `Image de démonstration : ${name || "photo"}`;
+function demo(filename?: string) {
   return ok({ alt_text: DEMO_ALT(filename || ""), tags: DEMO_TAGS });
 }
 
@@ -35,37 +28,31 @@ export async function POST(req: NextRequest) {
     let lang = "fr";
     let style: "neutral" | "ecommerce" | "editorial" = "neutral";
 
-    // ---- 1) Récupération des données d'entrée (JSON OU form-data)
+    // Entrées: JSON {imageBase64, lang, style} OU form-data {file, lang, style}
     if (ct.includes("application/json")) {
-      const { imageBase64: b64, lang: L, style: S } = await req.json();
-      if (typeof b64 === "string") imageBase64 = b64;
-      if (typeof L === "string") lang = L;
-      if (typeof S === "string") style = S as any;
+      const j = await req.json();
+      if (typeof j.imageBase64 === "string") imageBase64 = j.imageBase64;
+      if (typeof j.lang === "string") lang = j.lang;
+      if (typeof j.style === "string") style = j.style;
     } else if (ct.includes("multipart/form-data")) {
       const form = await req.formData();
       const f = form.get("file");
-      const L = form.get("lang");
-      const S = form.get("style");
       if (f instanceof File) {
         imageBase64 = await fileToBase64(f);
         filename = f.name || filename;
       }
-      if (typeof L === "string") lang = L;
-      if (typeof S === "string") style = S as any;
+      const L = form.get("lang");  if (typeof L === "string") lang = L;
+      const S = form.get("style"); if (typeof S === "string") style = S as any;
     } else {
-      return bad("Content-Type non supporté. Envoyez JSON (imageBase64) ou form-data (file).");
+      return bad("Content-Type non supporté (JSON ou multipart/form-data).");
     }
 
-    // garde-fous
     if (!imageBase64) return bad("imageBase64 (ou file) manquant.");
     if (imageBase64.length > 7_000_000) return bad("Image trop lourde (> ~5 Mo).");
 
-    // ---- 2) Si pas de clé -> mode démo immédiat
-    if (!process.env.OPENAI_API_KEY) {
-      return demoResponse(filename);
-    }
+    // Pas de clé -> mode démo propre
+    if (!process.env.OPENAI_API_KEY) return demo(filename);
 
-    // ---- 3) Prépare le prompt
     const styleHint =
       style === "ecommerce"
         ? "Ton concis orienté produit, inclure matière/couleur/caractéristiques."
@@ -91,7 +78,6 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
       ],
     };
 
-    // ---- 4) Appel OpenAI
     const resp = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -101,11 +87,8 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
       body: JSON.stringify(body),
     });
 
-    // Si quota insuffisant -> démo propre au lieu de planter
-    if (resp.status === 429) {
-      return demoResponse(filename);
-    }
-
+    // Quota HS -> renvoie démo plutôt que planter
+    if (resp.status === 429) return demo(filename);
     if (!resp.ok) {
       const t = await resp.text();
       return bad(`OpenAI error: ${t}`, 500);
@@ -114,18 +97,19 @@ Retourne STRICTEMENT un JSON: {"alt_text":"...", "tags":["...","...","..."]} (ma
     const data = await resp.json();
     const raw = (data.output_text ?? data.content?.[0]?.text ?? "").trim();
 
-    // ---- 5) Parse la sortie (toujours renvoyer un JSON)
-    let parsed: { alt_text: string; tags: string[] } | null = null;
+    // Parse sécurisé
+    let parsed: any;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // fallback si le modèle répond en texte
-      parsed = { alt_text: raw || DEMO_ALT(filename), tags: DEMO_TAGS };
+      parsed = { alt_text: raw, tags: [] };
     }
+    if (!parsed || typeof parsed !== "object") parsed = { alt_text: DEMO_ALT(filename), tags: [] };
+    if (typeof parsed.alt_text !== "string") parsed.alt_text = DEMO_ALT(filename);
+    if (!Array.isArray(parsed.tags)) parsed.tags = [];
 
-    // nettoyage
-    parsed.alt_text = String(parsed.alt_text || DEMO_ALT(filename)).slice(0, 140);
-    parsed.tags = Array.isArray(parsed.tags) ? parsed.tags.slice(0, 5).map(String) : DEMO_TAGS;
+    parsed.alt_text = String(parsed.alt_text).slice(0, 140);
+    parsed.tags = parsed.tags.slice(0, 5).map((x: any) => String(x));
 
     return ok(parsed);
   } catch (e: any) {
