@@ -1,3 +1,34 @@
 @import "tailwindcss";
 
-html, body { margin:0; padding:0; background:#f9fafb; color:#111827; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+/* Palette & tokens rapides */
+:root{
+  --brand:#4f46e5;          /* indigo-600 */
+  --brand-700:#4338ca;
+  --ink:#0f172a;            /* slate-900 */
+  --muted:#64748b;          /* slate-500 */
+  --card:#ffffff;
+  --ring: 0 0 0 3px rgba(79,70,229,.15);
+}
+
+*{outline:0}
+a,button{transition:.2s ease}
+
+.btn{
+  @apply inline-flex items-center justify-center rounded-lg text-sm font-medium;
+  @apply px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50;
+}
+.btn-primary{
+  background:var(--brand); color:white; border-color:transparent;
+}
+.btn-primary:hover{ background:var(--brand-700) }
+.btn:focus-visible{ box-shadow:var(--ring) }
+
+.card{
+  @apply rounded-2xl border border-slate-200 bg-[var(--card)] shadow-sm;
+}
+.chip{
+  @apply text-xs px-2 py-1 border border-slate-200 rounded bg-slate-50;
+}
+
+/* petits resets */
+html,body{height:100%}
