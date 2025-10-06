@@ -14,7 +14,7 @@ export default function HomePage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Nettoyage URL d’aperçu
+  // Nettoyage URL d’aperçu (éviter les fuites)
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -26,8 +26,8 @@ export default function HomePage() {
   }
 
   function validateFile(file: File): string | null {
-    if (!isImage(file)) return "Format non supporté. Utilisez JPG, PNG ou WEBP.";
-    if (file.size > 5 * 1024 * 1024) return "Fichier trop volumineux (max 5 Mo).";
+    if (!isImage(file)) return 'Format non supporté. Utilisez JPG, PNG ou WEBP.';
+    if (file.size > 5 * 1024 * 1024) return 'Fichier trop volumineux (max 5 Mo).';
     return null;
   }
 
@@ -44,7 +44,7 @@ export default function HomePage() {
     setErrorMsg(null);
     setFileName(file.name);
 
-    // aperçu
+    // aperçu local
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -58,15 +58,15 @@ export default function HomePage() {
       const res = await fetch('/api/generate', { method: 'POST', body: formData });
       const data = await res.json();
 
-      if (!res.ok || data?.error) {
-        setErrorMsg(data?.error ?? "Erreur temporaire. Merci de réessayer.");
+      if (!res.ok || (data && (data as any).error)) {
+        setErrorMsg((data as any)?.error ?? 'Erreur temporaire. Merci de réessayer.');
         setResult(null);
         return;
       }
       setResult(data as GenResult);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Erreur réseau. Vérifiez votre connexion puis réessayez.");
+    } catch (e) {
+      console.error(e);
+      setErrorMsg('Erreur réseau. Vérifiez votre connexion puis réessayez.');
       setResult(null);
     } finally {
       setBusy(false);
@@ -82,13 +82,14 @@ export default function HomePage() {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (file) void handleFile(file);
   }
 
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(true);
   }
+
   function onDragLeave() {
     setDragging(false);
   }
@@ -100,17 +101,17 @@ export default function HomePage() {
   function downloadCSV() {
     if (!result) return;
     const rows = [
-      ["filename", "alt", "tags"],
-      [fileName ?? "image", result.alt_text, result.tags.join("|")],
+      ['filename', 'alt', 'tags'],
+      [fileName ?? 'image', result.alt_text, result.tags.join('|')],
     ];
-    const csv = rows.map(r =>
-      r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
-    ).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = (fileName ?? "alt-tags") + ".csv";
+    a.download = (fileName ?? 'alt-tags') + '.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -160,13 +161,13 @@ export default function HomePage() {
           <div className="card p-5 bg-gradient-to-b from-slate-50 to-white">
             <div className="text-sm font-medium mb-2">Exemple de sortie</div>
             <div className="text-sm">
-              <span className="font-semibold">ALT :</span>{" "}
+              <span className="font-semibold">ALT :</span>{' '}
               <span className="text-slate-700">Chaussures en cuir noir pour homme sur fond blanc</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["chaussures","cuir","noir","homme","mode"].map((t,i)=>
+              {['chaussures', 'cuir', 'noir', 'homme', 'mode'].map((t, i) => (
                 <span key={i} className="chip">{t}</span>
-              )}
+              ))}
             </div>
             <div className="mt-4 text-xs text-slate-500">Généré par IA — format court et descriptif</div>
           </div>
@@ -211,9 +212,9 @@ export default function HomePage() {
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={[
-            "rounded-xl border-2 border-dashed p-6 transition",
-            dragging ? "border-indigo-400 bg-indigo-50/40" : "border-slate-300 bg-white"
-          ].join(" ")}
+            'rounded-xl border-2 border-dashed p-6 transition',
+            dragging ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-300 bg-white',
+          ].join(' ')}
         >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
@@ -257,8 +258,9 @@ export default function HomePage() {
         </div>
 
         {busy && (
-          <div className="mt-4 animate-pulse card p-5 bg-slate-50 text-slate-400 text-sm">
-            Génération en cours...
+          <div className="mt-4 card p-5 text-sm flex items-center gap-3">
+            <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
+            Génération en cours…
           </div>
         )}
 
@@ -291,9 +293,18 @@ export default function HomePage() {
       <section id="how" className="mx-auto max-w-6xl px-4 py-12">
         <h2 className="text-2xl font-semibold mb-6">Comment ça marche</h2>
         <ol className="grid sm:grid-cols-3 gap-4 text-sm">
-          <li className="card p-4"><div className="text-2xl mb-1">1</div>Téléversez vos images (JPG, PNG, WEBP).</li>
-          <li className="card p-4"><div className="text-2xl mb-1">2</div>L’IA génère un ALT court + 3–5 tags pertinents.</li>
-          <li className="card p-4"><div className="text-2xl mb-1">3</div>Copiez ou exportez un CSV pour votre CMS.</li>
+          <li className="card p-4">
+            <div className="text-2xl mb-1">1</div>
+            Téléversez vos images (JPG, PNG, WEBP).
+          </li>
+          <li className="card p-4">
+            <div className="text-2xl mb-1">2</div>
+            L’IA génère un ALT court + 3–5 tags pertinents.
+          </li>
+          <li className="card p-4">
+            <div className="text-2xl mb-1">3</div>
+            Copiez ou exportez un CSV pour votre CMS.
+          </li>
         </ol>
       </section>
 
@@ -315,14 +326,20 @@ export default function HomePage() {
           <div className="card p-6 border-indigo-200">
             <div className="text-lg font-semibold">Pro</div>
             <div className="mt-1 text-slate-500 text-sm">Pour sites & boutiques en croissance</div>
-            <div className="mt-4 text-3xl font-extrabold">9 € <span className="text-base font-normal text-slate-500">/ 500 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              9 € <span className="text-base font-normal text-slate-500">/ 500 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 500 images</li>
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir"
-               className="btn mt-6 inline-block">Me prévenir</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir"
+              className="btn mt-6 inline-block"
+            >
+              Me prévenir
+            </a>
           </div>
         </div>
       </section>
@@ -364,4 +381,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-            }
+              }
