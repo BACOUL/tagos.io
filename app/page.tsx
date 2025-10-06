@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 
+type GenResult = { alt_text: string; tags: string[] };
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ alt_text: string; tags: string[] } | null>(null);
+  const [result, setResult] = useState<GenResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -12,6 +14,7 @@ export default function HomePage() {
 
     setBusy(true);
     setResult(null);
+    setErrorMsg(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -19,10 +22,15 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/generate', { method: 'POST', body: formData });
       const data = await res.json();
-      setResult(data);
+
+      if (!res.ok || data?.error) {
+        setErrorMsg(data?.error ?? "Erreur temporaire. Merci de réessayer.");
+        return;
+      }
+      setResult(data as GenResult);
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de la génération des tags.");
+      setErrorMsg("Erreur réseau. Vérifiez votre connexion puis réessayez.");
     } finally {
       setBusy(false);
     }
@@ -47,23 +55,23 @@ export default function HomePage() {
         </nav>
       </div>
 
-      {/* HERO — slogan validé */}
+      {/* HERO */}
       <header className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
         <div className="grid gap-10 sm:grid-cols-2 items-center">
           <div>
             <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
               Optimisation d’images par IA
             </span>
-            <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-[1.05] tracking-tight">
+            <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
               La visibilité, <span className="text-indigo-600">automatisée</span>.
             </h1>
-            <p className="mt-4 text-slate-600">
-              Tagos optimise vos images pour le référencement grâce à l’intelligence artificielle.
+            <p className="mt-4 text-slate-600 text-lg sm:text-xl">
+              Tagos optimise vos images pour le référencement grâce à l’IA.
               Balises, textes alternatifs et mots-clés générés instantanément — sans effort, sans plugin.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a href="#try" className="btn btn-primary">🚀 Générer mes tags</a>
-              <a href="#how" className="btn">Comment ça marche</a>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <a href="#try" className="btn btn-primary w-full sm:w-auto">🚀 Générer mes tags</a>
+              <a href="#how" className="btn w-full sm:w-auto">Comment ça marche</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Pas de compte • Essai gratuit • Aucune image stockée</p>
           </div>
@@ -93,13 +101,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FEATURES (Pourquoi) */}
+      {/* FEATURES */}
       <section id="why" className="mx-auto max-w-6xl px-4 py-12">
         <h2 className="text-2xl font-semibold mb-6">Pourquoi choisir Tagos</h2>
         <div className="grid sm:grid-cols-3 gap-4 text-sm">
           <div className="card p-4">
             <div className="text-base font-medium mb-1">Visibilité</div>
-            Des descriptions intelligentes améliorent vos positions sur Google Images et la recherche visuelle.
+            Descriptions intelligentes pour de meilleures positions sur Google Images et la recherche visuelle.
           </div>
           <div className="card p-4">
             <div className="text-base font-medium mb-1">Gain de temps</div>
@@ -107,7 +115,7 @@ export default function HomePage() {
           </div>
           <div className="card p-4">
             <div className="text-base font-medium mb-1">Accessibilité</div>
-            Un ALT clair rend vos contenus accessibles à tous les utilisateurs et lecteurs d’écran.
+            Un ALT clair rend vos contenus accessibles à tous les utilisateurs.
           </div>
         </div>
       </section>
@@ -122,8 +130,10 @@ export default function HomePage() {
           accept="image/*"
           onChange={handleUpload}
           disabled={busy}
-          className="block w-full border border-slate-300 rounded-lg p-2 text-sm"
         />
+        <p className="mt-2 text-xs text-slate-500">
+          Formats : JPG, PNG, WEBP — Taille max : 5 Mo. Aucune image n’est conservée.
+        </p>
 
         {busy && (
           <div className="mt-4 animate-pulse card p-5 bg-slate-50 text-slate-400 text-sm">
@@ -131,7 +141,13 @@ export default function HomePage() {
           </div>
         )}
 
-        {result && (
+        {errorMsg && (
+          <div className="mt-4 card border border-rose-200 bg-rose-50 text-rose-700 text-sm p-4">
+            {errorMsg}
+          </div>
+        )}
+
+        {result && !errorMsg && (
           <div className="mt-5 card p-5">
             <div className="text-sm">
               <strong>ALT :</strong> {result.alt_text}
@@ -140,6 +156,20 @@ export default function HomePage() {
               {result.tags.map((tag, i) => (
                 <span key={i} className="chip">{tag}</span>
               ))}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => navigator.clipboard.writeText(result.alt_text)}
+                className="btn"
+              >
+                Copier l’ALT
+              </button>
+              <button
+                onClick={() => navigator.clipboard.writeText(result.tags.join(', '))}
+                className="btn"
+              >
+                Copier les tags
+              </button>
             </div>
           </div>
         )}
@@ -179,8 +209,8 @@ export default function HomePage() {
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Support prioritaire</li>
             </ul>
-            {/* Lien Stripe à brancher plus tard */}
-            <a href="#try" className="btn mt-6 inline-block">Être prévenu</a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir"
+               className="btn mt-6 inline-block">Me prévenir</a>
           </div>
         </div>
       </section>
@@ -195,15 +225,15 @@ export default function HomePage() {
           </div>
           <div className="card p-4">
             <div className="font-medium mb-1">Est-ce compatible avec mon CMS ?</div>
-            Oui, vous pouvez copier/coller les résultats ou exporter un CSV pour WordPress, Shopify, Webflow, etc.
+            Oui : WordPress, Shopify, Webflow… Copiez/collez ou exportez en CSV.
           </div>
           <div className="card p-4">
-            <div className="font-medium mb-1">En quelles langues ?</div>
-            Français en priorité. Anglais et Espagnol à venir.
+            <div className="font-medium mb-1">Quelles langues ?</div>
+            Français dès maintenant. Anglais et Espagnol arrivent.
           </div>
           <div className="card p-4">
-            <div className="font-medium mb-1">Puis-je utiliser des images volumineuses ?</div>
-            Jusqu’à 5 Mo par image (recommandé : JPG/WEBP optimisés).
+            <div className="font-medium mb-1">Limites d’upload ?</div>
+            Jusqu’à 5 Mo par image. Préférez JPG/WEBP optimisés.
           </div>
         </div>
       </section>
@@ -214,6 +244,8 @@ export default function HomePage() {
           <p>© 2025 Tagos.io — Tous droits réservés.</p>
           <div className="flex gap-3">
             <a href="/privacy" className="hover:text-slate-700">Confidentialité</a>
+            <a href="/legal" className="hover:text-slate-700">Mentions légales</a>
+            <a href="/terms" className="hover:text-slate-700">Conditions</a>
             <a href="mailto:contact@tagos.io" className="hover:text-slate-700">Contact</a>
           </div>
         </div>
