@@ -30,21 +30,22 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-      {/* HERO */}
+      {/* HERO — nouveau slogan */}
       <header className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
         <div className="grid gap-10 sm:grid-cols-2 items-center">
           <div>
             <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
-              ALT & tags SEO pour images
+              Optimisation d’images par IA
             </span>
             <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-[1.05] tracking-tight">
-              Des balises ALT <span className="text-indigo-600">claires</span>. En un clic.
+              La visibilité, <span className="text-indigo-600">automatisée</span>.
             </h1>
             <p className="mt-4 text-slate-600">
-              Déposez vos images. Tagos génère un ALT utile et 3–5 tags pertinents. Compatible WordPress, Shopify, Webflow et HTML.
+              Tagos optimise vos images pour le référencement grâce à l’intelligence artificielle.
+              Balises, textes alternatifs et mots-clés générés instantanément — sans effort, sans plugin.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="#try" className="btn btn-primary">Essayer gratuitement</a>
+              <a href="#try" className="btn btn-primary">🚀 Générer mes tags</a>
               <a href="#how" className="btn">Comment ça marche</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Pas de compte • 10 essais gratuits • Aucune image stockée</p>
@@ -131,4 +132,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-        }
+}
