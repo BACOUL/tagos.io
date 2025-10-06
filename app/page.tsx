@@ -77,10 +77,12 @@ export default function HomePage() {
         return;
       }
 
-      // Nettoyage sortie
+      // Nettoyage sortie (TYPES FIXÉS ICI)
       const alt = String(data.alt_text ?? '').trim();
-      const tagsArr = Array.isArray(data.tags) ? data.tags : [];
-      const uniqueTags = [...new Set(tagsArr.map((t: unknown) => String(t).trim()).filter(Boolean))].slice(0, 8);
+      const tagsArr: unknown[] = Array.isArray(data.tags) ? data.tags : [];
+      const uniqueTags: string[] = [...new Set(
+        tagsArr.map((t) => String(t).trim()).filter(Boolean)
+      )].slice(0, 8);
 
       setResult({
         alt_text: alt || 'Image de produit sur fond clair',
@@ -216,7 +218,7 @@ export default function HomePage() {
             <p className="mt-3 text-xs text-slate-500">Pas de compte • Essai gratuit • Aucune image conservée</p>
           </div>
 
-          {/* Simulation d’extrait Google Images (effet concret immédiat) */}
+          {/* Simulation d’extrait Google Images */}
           <div className="card p-6 bg-white/80 backdrop-blur shadow-lg">
             <div className="text-sm font-medium mb-2">Exemple de sortie</div>
             <div className="text-sm">
@@ -461,4 +463,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-}
+                                                               }
