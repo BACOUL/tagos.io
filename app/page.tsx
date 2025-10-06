@@ -14,6 +14,7 @@ export default function HomePage() {
   const [originalFile, setOriginalFile] = useState<File | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   // Nettoyage URL d’aperçu
   useEffect(() => {
@@ -75,13 +76,24 @@ export default function HomePage() {
         setResult(null);
         return;
       }
-      setResult(data as GenResult);
+
+      // Nettoyage sortie
+      const alt = String(data.alt_text ?? '').trim();
+      const tagsArr = Array.isArray(data.tags) ? data.tags : [];
+      const uniqueTags = [...new Set(tagsArr.map((t: unknown) => String(t).trim()).filter(Boolean))].slice(0, 8);
+
+      setResult({
+        alt_text: alt || 'Image de produit sur fond clair',
+        tags: uniqueTags.length ? uniqueTags : ['produit', 'photo', 'web'],
+      });
     } catch (err) {
       console.error(err);
       setErrorMsg("Erreur réseau. Vérifiez votre connexion puis réessayez.");
       setResult(null);
     } finally {
       setBusy(false);
+      // reset input pour permettre le même fichier à nouveau
+      if (inputRef.current) inputRef.current.value = '';
     }
   }
 
@@ -93,37 +105,46 @@ export default function HomePage() {
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(false);
+    if (busy) return;
     const file = e.dataTransfer.files?.[0];
     if (file) void handleFile(file);
   }
 
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    setDragging(true);
+    if (!busy) setDragging(true);
   }
   function onDragLeave() {
     setDragging(false);
   }
 
+  // Accessibilité : déposer via clavier (Entrée/Espace)
+  function onDropzoneKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (busy) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      inputRef.current?.click();
+    }
+  }
+
   // Toast copie
-  function copy(text: string) {
-    navigator.clipboard.writeText(text);
+  function toast(msg: string) {
     const el = document.createElement('div');
-    el.textContent = 'Copié ✅';
+    el.textContent = msg;
     el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
+  }
+  function copy(text: string) {
+    navigator.clipboard.writeText(text).then(() => toast('Copié ✅'));
   }
 
   // Téléchargement du fichier renommé (même contenu, nom optimisé SEO)
   function downloadRenamed() {
     if (!originalFile || !result) return;
-
-    // extension du fichier original
     const extMatch = (originalFile.name.match(/\.[a-zA-Z0-9]+$/) || [''])[0] || '.jpg';
     const cleanBase = slugify(result.alt_text || 'image-optimisee');
     const newName = `${cleanBase}${extMatch}`;
-
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
@@ -132,6 +153,7 @@ export default function HomePage() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast('Image renommée téléchargée ✅');
   }
 
   // Export CSV (filename, alt, tags)
@@ -151,6 +173,7 @@ export default function HomePage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    toast('CSV exporté ✅');
   }
 
   return (
@@ -193,6 +216,7 @@ export default function HomePage() {
             <p className="mt-3 text-xs text-slate-500">Pas de compte • Essai gratuit • Aucune image conservée</p>
           </div>
 
+          {/* Simulation d’extrait Google Images (effet concret immédiat) */}
           <div className="card p-6 bg-white/80 backdrop-blur shadow-lg">
             <div className="text-sm font-medium mb-2">Exemple de sortie</div>
             <div className="text-sm">
@@ -205,6 +229,17 @@ export default function HomePage() {
               )}
             </div>
             <div className="mt-4 text-xs text-slate-500">Format court, descriptif et prêt pour le SEO</div>
+
+            <div className="mt-5 rounded-lg border border-slate-200 p-3">
+              <div className="text-[11px] text-slate-500 mb-1">Aperçu Google Images</div>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-md bg-slate-100 grid place-items-center text-[10px] text-slate-500">img</div>
+                <div className="min-w-0">
+                  <div className="text-sm truncate">chaussures-cuir-noir-homme.jpg</div>
+                  <div className="text-[12px] text-slate-500 truncate">Chaussures en cuir noir pour homme sur fond blanc</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -224,7 +259,7 @@ export default function HomePage() {
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           <div className="card p-5 shadow-md hover:shadow-lg transition">
             <div className="text-base font-medium mb-1">Meilleure visibilité</div>
-            Des descriptions pertinentes améliorent vos positions sur Google Images et la recherche visuelle.
+            Descriptions pertinentes améliorent vos positions sur Google Images et la recherche visuelle.
           </div>
           <div className="card p-5 shadow-md hover:shadow-lg transition">
             <div className="text-base font-medium mb-1">Gain de temps</div>
@@ -237,18 +272,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TOOL — zone */}
+      {/* TOOL */}
       <section id="try" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-5 text-center">Essayez maintenant</h2>
 
-        {/* Dropzone */}
         <div
+          ref={dropRef}
+          role="button"
+          tabIndex={0}
+          aria-label="Zone de dépôt pour téléverser une image"
+          onKeyDown={onDropzoneKey}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={[
-            "rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl",
-            dragging ? "border-indigo-400 bg-indigo-50/50" : "border-slate-300 bg-white"
+            "rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl outline-none",
+            dragging ? "border-indigo-400 bg-indigo-50/50" : "border-slate-300 bg-white",
+            busy ? "opacity-70 pointer-events-none" : ""
           ].join(" ")}
         >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -259,6 +299,7 @@ export default function HomePage() {
                 onClick={() => inputRef.current?.click()}
                 className="btn mt-2"
                 type="button"
+                disabled={busy}
               >
                 Choisir un fichier
               </button>
@@ -277,7 +318,7 @@ export default function HomePage() {
               <div className="w-full sm:w-auto">
                 <img
                   src={previewUrl}
-                  alt="aperçu"
+                  alt="Aperçu du fichier sélectionné"
                   className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow"
                 />
                 <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">
@@ -301,7 +342,7 @@ export default function HomePage() {
         )}
 
         {errorMsg && (
-          <div className="mt-5 card border border-rose-200 bg-rose-50 text-rose-700 text-sm p-4 mx-auto max-w-3xl">
+          <div className="mt-5 card border border-rose-200 bg-rose-50 text-rose-700 text-sm p-4 mx-auto max-w-3xl" role="alert">
             {errorMsg}
           </div>
         )}
@@ -317,13 +358,15 @@ export default function HomePage() {
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
-              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les tags</button>
-              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
-              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">Télécharger l’image renommée</button>
+              <button onClick={() => copy(result.alt_text)} className="btn" type="button">Copier l’ALT</button>
+              <button onClick={() => copy(result.tags.join(', '))} className="btn" type="button">Copier les tags</button>
+              <button onClick={downloadCSV} className="btn" type="button">Exporter en CSV</button>
+              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20" type="button">
+                Télécharger l’image renommée
+              </button>
             </div>
             <p className="mt-3 text-[12px] text-slate-500">
-              Astuce : renommez vos fichiers avec une description claire. Les systèmes CMS comprennent mieux le contenu.
+              Astuce : renommez vos fichiers avec une description claire. Les CMS comprennent mieux le contenu.
             </p>
           </div>
         )}
@@ -339,7 +382,7 @@ export default function HomePage() {
         </ol>
       </section>
 
-      {/* PRICING — grille ajustée */}
+      {/* PRICING */}
       <section id="pricing" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-6 text-center">Tarifs simples</h2>
         <div className="grid sm:grid-cols-3 gap-6">
@@ -373,7 +416,7 @@ export default function HomePage() {
             <div className="mt-4 text-3xl font-extrabold">19 € <span className="text-base font-normal text-slate-500">/ 1 500 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 1 500 images</li>
-              <li>• Files multiples & API</li>
+              <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
             <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
@@ -418,4 +461,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-      }
+}
