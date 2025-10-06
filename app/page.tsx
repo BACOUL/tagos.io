@@ -1,103 +1,88 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [alt, setAlt] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [lang, setLang] = useState("fr");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const b64 = await fileToBase64(f);
+    setPreview(URL.createObjectURL(f));
+    setLoading(true);
+    setAlt(""); setTags([]);
+
+    const res = await fetch("/api/caption", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64: b64, lang })
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (data.error) {
+      setAlt("Erreur: " + (data.error || "inconnue"));
+      return;
+    }
+    setAlt(data.alt_text || "");
+    setTags(data.tags || []);
+  }
+
+  return (
+    <main className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-xl space-y-4">
+        <h1 className="text-3xl font-bold">Tagos.io — ALT SEO auto</h1>
+        <p className="text-sm opacity-80">
+          Uploade une image → on génère un texte alternatif optimisé SEO + 5 tags.
+        </p>
+
+        <div className="flex items-center gap-3">
+          <label className="text-sm">Langue</label>
+          <select value={lang} onChange={e=>setLang(e.target.value)} className="border rounded px-2 py-1">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <input type="file" accept="image/*" onChange={onFile} className="block" />
+
+        {preview && (
+          <img src={preview} alt="preview" className="w-full rounded border" />
+        )}
+
+        <div className="border rounded p-3 bg-gray-50">
+          {loading ? "Analyse en cours…" : (
+            <>
+              <div className="font-semibold">ALT proposé :</div>
+              <div className="mt-1">{alt || "—"}</div>
+              <div className="mt-3 font-semibold">Tags :</div>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {tags?.map((t, i) => (
+                  <span key={i} className="text-xs px-2 py-1 border rounded">{t}</span>
+                ))}
+                {!tags?.length && <span className="text-xs opacity-60">—</span>}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = String(r.result || "");
+      resolve(s.split(",")[1] || ""); // on conserve uniquement le base64
+    };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+              }
