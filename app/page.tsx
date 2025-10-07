@@ -13,6 +13,9 @@ export default function HomePage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
 
+  // NEW: état menu mobile
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Nettoyage URL d’aperçu
@@ -212,6 +215,15 @@ export default function HomePage() {
     setTimeout(() => el.remove(), 1500);
   }
 
+  // Fermer le menu mobile quand on clique sur un lien d’ancre
+  function handleMobileNavClick(targetId: string) {
+    setMobileOpen(false);
+    const el = document.querySelector(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white text-slate-900">
       {/* NAV + HERO — premium */}
@@ -222,6 +234,7 @@ export default function HomePage() {
           <div className="absolute top-32 -left-16 h-60 w-60 rounded-full bg-violet-300/30 blur-3xl"></div>
         </div>
 
+        {/* HEADER STICKY */}
         <div className="border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
           <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
             <a href="/" className="flex items-center gap-2">
@@ -230,6 +243,8 @@ export default function HomePage() {
               </div>
               <span className="font-semibold">Tagos.io</span>
             </a>
+
+            {/* MENU DESKTOP */}
             <div className="hidden sm:flex items-center gap-6 text-sm">
               <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
               <a href="#try" className="hover:text-indigo-600">Essayer</a>
@@ -238,9 +253,78 @@ export default function HomePage() {
               <a href="#faq" className="hover:text-indigo-600">FAQ</a>
               <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">Optimiser</a>
             </div>
+
+            {/* HAMBURGER MOBILE */}
+            <button
+              type="button"
+              className="sm:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Ouvrir le menu"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-menu"
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {/* Icône burger / close */}
+              {!mobileOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                  <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
           </nav>
+
+          {/* OVERLAY MOBILE */}
+          <div
+            className={[
+              'sm:hidden fixed inset-0 bg-slate-900/40 transition-opacity',
+              mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+            ].join(' ')}
+            aria-hidden={!mobileOpen}
+            onClick={() => setMobileOpen(false)}
+          />
+
+          {/* DRAWER MOBILE */}
+          <div
+            id="mobile-menu"
+            className={[
+              'sm:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-xl transition-transform duration-200',
+              mobileOpen ? 'translate-x-0' : 'translate-x-full',
+            ].join(' ')}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <span className="font-semibold">Menu</span>
+              <button
+                className="rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Fermer le menu"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <nav className="p-4 flex flex-col gap-3 text-sm">
+              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>Ce que vous gagnez</button>
+              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>Essayer</button>
+              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>Offres</button>
+              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#partners')}>Partenaires</button>
+              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>FAQ</button>
+              <button
+                className="btn btn-primary mt-2"
+                onClick={() => handleMobileNavClick('#try')}
+              >
+                Optimiser une image
+              </button>
+            </nav>
+          </div>
         </div>
 
+        {/* HERO */}
         <header className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <div className="grid gap-10 sm:grid-cols-2 items-center">
             <div>
@@ -293,9 +377,7 @@ export default function HomePage() {
       {/* CE QUE VOUS GAGNEZ */}
       <section id="value" className="mx-auto max-w-6xl px-4 py-14">
         <h2 className="text-2xl font-semibold mb-2 text-center">Tout ce qui compte pour le référencement d’une image</h2>
-        <p className="text-center text-slate-600 mb-8">
-          1 envoi = 6 livrables immédiats, à coller dans votre CMS.
-        </p>
+        <p className="text-center text-slate-600 mb-8">1 envoi = 6 livrables immédiats, à coller dans votre CMS.</p>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           {[
             ['Texte alternatif (ALT)', 'Description claire et concise de l’image.'],
@@ -403,9 +485,8 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* === Livrables supplémentaires === */}
+            {/* Livrables complémentaires */}
             <div className="mt-6 grid gap-4">
-              {/* Title */}
               <div className="card p-4">
                 <div className="text-sm font-medium mb-1">Title (info-bulle)</div>
                 <div className="text-sm text-slate-700">{result.alt_text}</div>
@@ -414,7 +495,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Légende */}
               <div className="card p-4">
                 <div className="text-sm font-medium mb-1">Légende / contexte</div>
                 <div className="text-sm text-slate-700">
@@ -427,7 +507,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* JSON-LD */}
               <div className="card p-4">
                 <div className="text-sm font-medium mb-1">Données structurées (JSON-LD)</div>
                 <textarea
@@ -462,7 +541,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Sitemap Image */}
               <div className="card p-4">
                 <div className="text-sm font-medium mb-1">Sitemap images (XML)</div>
                 <textarea
@@ -502,7 +580,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* PLANS & PARTENAIRES */}
+      {/* PLANS */}
       <section id="plans" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-6 text-center">Des offres claires</h2>
         <div className="grid sm:grid-cols-4 gap-6">
@@ -568,7 +646,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PARTENAIRES / REVENTE */}
+      {/* PARTENAIRES */}
       <section id="partners" className="mx-auto max-w-6xl px-4 pb-14">
         <div className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
           <div className="grid sm:grid-cols-2 gap-6 items-center">
