@@ -27,15 +27,15 @@ export default function HomePage() {
   }
 
   function validateFile(file: File): string | null {
-    if (!isImage(file)) return "Format non supporté. Utilisez JPG, PNG ou WEBP.";
-    if (file.size > 5 * 1024 * 1024) return "Fichier trop volumineux (max 5 Mo).";
+    if (!isImage(file)) return 'Format non supporté. Utilisez JPG, PNG ou WEBP.';
+    if (file.size > 5 * 1024 * 1024) return 'Fichier trop volumineux (max 5 Mo).';
     return null;
   }
 
   // Limite gratuite (3 images / jour)
   function canUseToday(limit = 3) {
     try {
-      const key = "tagos-quota";
+      const key = 'tagos-quota';
       const today = new Date().toISOString().slice(0, 10);
       const raw = localStorage.getItem(key);
       const data = raw ? (JSON.parse(raw) as { d: string; c: number }) : { d: today, c: 0 };
@@ -50,7 +50,7 @@ export default function HomePage() {
   }
   function bumpUse() {
     try {
-      const key = "tagos-quota";
+      const key = 'tagos-quota';
       const today = new Date().toISOString().slice(0, 10);
       const raw = localStorage.getItem(key);
       const data = raw ? (JSON.parse(raw) as { d: string; c: number }) : { d: today, c: 0 };
@@ -63,7 +63,8 @@ export default function HomePage() {
   function slugify(input: string) {
     return input
       .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 80);
@@ -78,7 +79,9 @@ export default function HomePage() {
     }
 
     if (!canUseToday(3)) {
-      setErrorMsg("Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.");
+      setErrorMsg(
+        'Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.'
+      );
       setResult(null);
       return;
     }
@@ -104,7 +107,7 @@ export default function HomePage() {
       const data = (await res.json()) as GenResult | { error?: string };
 
       if (!res.ok || (data as any)?.error) {
-        setErrorMsg((data as any)?.error ?? "Erreur temporaire. Merci de réessayer.");
+        setErrorMsg((data as any)?.error ?? 'Erreur temporaire. Merci de réessayer.');
         setResult(null);
         return;
       }
@@ -116,9 +119,9 @@ export default function HomePage() {
       });
 
       bumpUse();
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Erreur réseau. Vérifiez votre connexion puis réessayez.");
+    } catch (e) {
+      console.error(e);
+      setErrorMsg('Erreur réseau. Vérifiez votre connexion puis réessayez.');
       setResult(null);
     } finally {
       setBusy(false);
@@ -149,7 +152,8 @@ export default function HomePage() {
     navigator.clipboard.writeText(text);
     const el = document.createElement('div');
     el.textContent = 'Copié ✅';
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   }
@@ -176,15 +180,17 @@ export default function HomePage() {
   function downloadCSV() {
     if (!result) return;
     const rows = [
-      ["filename", "alt", "tags"],
-      [fileName ?? "image", result.alt_text, result.tags.join("|")],
+      ['filename', 'alt', 'tags'],
+      [fileName ?? 'image', result.alt_text, result.tags.join('|')],
     ];
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = (fileName ? fileName.replace(/\.[^.]+$/, '') : "alt-tags") + ".csv";
+    a.download = (fileName ? fileName.replace(/\.[^.]+$/, '') : 'alt-tags') + '.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -203,7 +209,8 @@ export default function HomePage() {
     e.currentTarget.reset();
     const el = document.createElement('div');
     el.textContent = 'Merci ! Nous vous recontactons très vite.';
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1500);
   }
@@ -212,9 +219,11 @@ export default function HomePage() {
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white text-slate-900">
       {/* TOP NAV */}
       <div className="border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
-        <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">T</div>
+        <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between" aria-label="Navigation principale">
+          <a href="/" className="flex items-center gap-2" aria-label="Tagos.io — Accueil">
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">
+              T
+            </div>
             <span className="font-semibold">Tagos.io</span>
           </a>
           <div className="hidden sm:flex items-center gap-6 text-sm">
@@ -223,7 +232,7 @@ export default function HomePage() {
             <a href="#usecases" className="hover:text-indigo-600">Cas d’usage</a>
             <a href="#pricing" className="hover:text-indigo-600">Tarifs</a>
             <a href="#faq" className="hover:text-indigo-600">FAQ</a>
-            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">Essayer</a>
+            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20" aria-label="Essayer l’outil">Essayer</a>
           </div>
         </nav>
       </div>
@@ -243,7 +252,9 @@ export default function HomePage() {
               mots-clés pertinents et nom de fichier optimisé — en quelques secondes.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">🚀 Optimiser mes images</a>
+              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20" aria-label="Optimiser mes images maintenant">
+                🚀 Optimiser mes images
+              </a>
               <a href="#how" className="btn w-full sm:w-auto">Comment ça marche</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
@@ -252,50 +263,94 @@ export default function HomePage() {
           <div className="card p-6 bg-white/80 backdrop-blur shadow-lg">
             <div className="text-sm font-medium mb-2">Avant / Après (exemple)</div>
             <div className="text-sm mb-2">
-              <span className="font-semibold">Nom fichier :</span>{" "}
-              <span className="text-slate-700 line-through decoration-rose-400 decoration-2">IMG_1023.jpg</span>{" "}
+              <span className="font-semibold">Nom fichier :</span>{' '}
+              <span className="text-slate-700 line-through decoration-rose-400 decoration-2">IMG_1023.jpg</span>{' '}
               <span className="mx-1">→</span>
               <span className="text-slate-800 font-medium">bague-or-rose-diamant-femme.jpg</span>
             </div>
             <div className="text-sm">
-              <span className="font-semibold">ALT :</span>{" "}
+              <span className="font-semibold">ALT :</span>{' '}
               <span className="text-slate-700">Bague en or rose sertie d’un diamant pour femme sur fond neutre</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["bague","or-rose","diamant","femme","bijoux"].map((t,i)=>
+              {['bague', 'or-rose', 'diamant', 'femme', 'bijoux'].map((t, i) => (
                 <span key={i} className="chip">{t}</span>
-              )}
+              ))}
             </div>
             <div className="mt-4 text-xs text-slate-500">Résultat prêt à indexer et accessible</div>
           </div>
         </div>
       </header>
 
-      {/* STRIP CONFIANCE — version sans logos de marques */}
+      {/* STRIP CONFIANCE — SVG pro */}
       <section className="bg-white/60 border-y border-slate-200">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <div className="grid sm:grid-cols-3 gap-6 text-sm text-slate-700">
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">✓</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-100 text-emerald-700" aria-hidden>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" role="img" aria-label="Check">
+                  <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
               <div>
                 <div className="font-medium">Confidentialité</div>
                 <div className="text-xs text-slate-500">Aucune image conservée</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">⚙</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-100 text-indigo-700" aria-hidden>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" role="img" aria-label="Réglages">
+                  <path d="M10.325 4.317a1 1 0 0 1 .894-.553h1.562a1 1 0 0 1 .894.553l.38.761a1 1 0 0 0 .723.548l.84.168a1 1 0 0 1 .8.98v1.55a1 1 0 0 1-.8.98l-.84.168a1 1 0 0 0-.723.548l-.38.761a1 1 0 0 1-.894.553h-1.562a1 1 0 0 1-.894-.553l-.38-.761a1 1 0 0 0-.723-.548l-.84-.168a1 1 0 0 1-.8-.98v-1.55a1 1 0 0 1 .8-.98l.84-.168a1 1 0 0 0 .723-.548l.38-.761zM9 14a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor"/>
+                </svg>
+              </span>
               <div>
                 <div className="font-medium">Compatible CMS</div>
                 <div className="text-xs text-slate-500">WordPress • Shopify • Webflow • PrestaShop</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">★</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-100 text-amber-700" aria-hidden>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" role="img" aria-label="Étoile">
+                  <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                </svg>
+              </span>
               <div>
                 <div className="font-medium">Qualité</div>
                 <div className="text-xs text-slate-500">ALT concis, mots-clés pertinents</div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CE QUE TAGOS CHANGE (business) */}
+      <section id="value" className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="text-2xl font-semibold mb-2 text-center">Ce que Tagos change concrètement</h2>
+        <p className="text-center text-slate-600 mb-6">Avant ➝ Après : le passage d’images “muettes” à des visuels lisibles, indexables et accessibles.</p>
+        <div className="grid sm:grid-cols-3 gap-6 text-sm">
+          <div className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">Découverte</div>
+            <ul className="space-y-1 text-slate-600">
+              <li>• ALT manquant → ALT clair & descriptif</li>
+              <li>• Nom générique → Fichier descriptif (slug)</li>
+              <li>• Mots-clés absents → 3–8 mots-clés pertinents</li>
+            </ul>
+          </div>
+          <div className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">Productivité</div>
+            <ul className="space-y-1 text-slate-600">
+              <li>• 2–3 min/image → quelques secondes</li>
+              <li>• Export CSV pour lot</li>
+              <li>• Téléchargement direct du fichier renommé</li>
+            </ul>
+          </div>
+          <div className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">Accessibilité</div>
+            <ul className="space-y-1 text-slate-600">
+              <li>• Conformité ALT (lecteurs d’écran)</li>
+              <li>• Cohérence sémantique</li>
+              <li>• Meilleure expérience utilisateur</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -337,7 +392,9 @@ export default function HomePage() {
               <div className="h-40 rounded-md bg-slate-100 grid place-items-center text-slate-500">Image</div>
               <div className="mt-3 text-xs text-slate-600"><b>ALT :</b> Chaise design en bois clair pour salle à manger</div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {["chaise","bois-clair","design","salle-a-manger","mobilier"].map((t,i)=><span key={i} className="chip">{t}</span>)}
+                {['chaise', 'bois-clair', 'design', 'salle-a-manger', 'mobilier'].map((t, i) => (
+                  <span key={i} className="chip">{t}</span>
+                ))}
               </div>
               <div className="mt-2 text-[11px] text-slate-500">chaise-design-bois-clair-salle-a-manger.jpg</div>
             </div>
@@ -373,19 +430,16 @@ export default function HomePage() {
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={[
-            "rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl",
-            dragging ? "border-indigo-400 bg-indigo-50/50" : "border-slate-300 bg-white"
-          ].join(" ")}
+            'rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl',
+            dragging ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-300 bg-white',
+          ].join(' ')}
+          aria-label="Zone de dépôt d’image"
         >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="text-center sm:text-left">
               <div className="font-medium text-slate-900">Glissez une image ici</div>
               <div className="text-xs text-slate-500 mt-1">ou</div>
-              <button
-                onClick={() => inputRef.current?.click()}
-                className="btn mt-2"
-                type="button"
-              >
+              <button onClick={() => inputRef.current?.click()} className="btn mt-2" type="button" aria-label="Choisir un fichier">
                 Choisir un fichier
               </button>
             </div>
@@ -397,18 +451,17 @@ export default function HomePage() {
               onChange={handleInputChange}
               disabled={busy}
               className="hidden"
+              aria-hidden="true"
             />
 
             {previewUrl && (
               <div className="w-full sm:w-auto">
                 <img
                   src={previewUrl}
-                  alt="aperçu"
+                  alt="Aperçu de l’image sélectionnée"
                   className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow"
                 />
-                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">
-                  {fileName}
-                </p>
+                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">{fileName}</p>
               </div>
             )}
           </div>
@@ -419,7 +472,11 @@ export default function HomePage() {
         </div>
 
         {busy && (
-          <div className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl" role="status" aria-live="polite">
+          <div
+            className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl"
+            role="status"
+            aria-live="polite"
+          >
             <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
             Génération en cours…
             <span className="sr-only">Veuillez patienter, génération en cours</span>
@@ -427,7 +484,7 @@ export default function HomePage() {
         )}
 
         {errorMsg && (
-          <div className="mt-5 card border border-rose-200 bg-rose-50 text-rose-700 text-sm p-4 mx-auto max-w-3xl">
+          <div className="mt-5 card border border-rose-200 bg-rose-50 text-rose-700 text-sm p-4 mx-auto max-w-3xl" role="alert">
             {errorMsg}
           </div>
         )}
@@ -443,10 +500,22 @@ export default function HomePage() {
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
-              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les mots-clés</button>
-              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
-              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">Télécharger l’image renommée</button>
+              <button onClick={() => copy(result.alt_text)} className="btn" aria-label="Copier le texte ALT">
+                Copier l’ALT
+              </button>
+              <button onClick={() => copy(result.tags.join(', '))} className="btn" aria-label="Copier les mots-clés">
+                Copier les mots-clés
+              </button>
+              <button onClick={downloadCSV} className="btn" aria-label="Exporter le résultat en CSV">
+                Exporter en CSV
+              </button>
+              <button
+                onClick={downloadRenamed}
+                className="btn btn-primary shadow-md shadow-indigo-600/20"
+                aria-label="Télécharger l’image renommée"
+              >
+                Télécharger l’image renommée
+              </button>
             </div>
             <p className="mt-3 text-[12px] text-slate-500">
               Astuce : renommez vos fichiers avec une description claire. Les CMS et Google comprennent mieux le contenu.
@@ -478,9 +547,18 @@ export default function HomePage() {
       <section id="how" className="mx-auto max-w-6xl px-4 py-14">
         <h2 className="text-2xl font-semibold mb-6 text-center">3 étapes pour rendre vos images visibles</h2>
         <ol className="grid sm:grid-cols-3 gap-6 text-sm">
-          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">1</div>Téléversez vos images (JPG, PNG, WEBP).</li>
-          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">2</div>Un texte alternatif clair, des mots-clés et un nom de fichier optimisé sont générés.</li>
-          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">3</div>Copiez, exportez en CSV ou téléchargez l’image renommée.</li>
+          <li className="card p-5 shadow-sm">
+            <div className="text-2xl mb-1">1</div>
+            Téléversez vos images (JPG, PNG, WEBP).
+          </li>
+          <li className="card p-5 shadow-sm">
+            <div className="text-2xl mb-1">2</div>
+            Un texte alternatif clair, des mots-clés et un nom de fichier optimisé sont générés.
+          </li>
+          <li className="card p-5 shadow-sm">
+            <div className="text-2xl mb-1">3</div>
+            Copiez, exportez en CSV ou téléchargez l’image renommée.
+          </li>
         </ol>
       </section>
 
@@ -503,37 +581,58 @@ export default function HomePage() {
           <div className="card p-6 shadow-lg border-indigo-200">
             <div className="text-lg font-semibold">Starter</div>
             <div className="mt-1 text-slate-500 text-sm">Pour petits sites</div>
-            <div className="mt-4 text-3xl font-extrabold">7 € <span className="text-base font-normal text-slate-500">/ 300 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              7 € <span className="text-base font-normal text-slate-500">/ 300 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 300 images</li>
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Import / export CSV</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir"
+              className="btn mt-6 inline-block"
+            >
+              Me prévenir
+            </a>
           </div>
 
           <div className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Pro</div>
             <div className="mt-1 text-slate-500 text-sm">Pour e-commerce</div>
-            <div className="mt-4 text-3xl font-extrabold">19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 1 500 images</li>
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir"
+              className="btn mt-6 inline-block"
+            >
+              Me prévenir
+            </a>
           </div>
 
           <div className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Agence</div>
             <div className="mt-1 text-slate-500 text-sm">Pour gros volumes</div>
-            <div className="mt-4 text-3xl font-extrabold">49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• 5 000 images</li>
               <li>• API & intégrations</li>
               <li>• SLA & support dédié</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">Contacter</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact"
+              className="btn mt-6 inline-block"
+            >
+              Contacter
+            </a>
           </div>
         </div>
       </section>
@@ -542,7 +641,9 @@ export default function HomePage() {
       <section id="newsletter" className="mx-auto max-w-4xl px-4 py-12">
         <div className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
           <h3 className="text-lg font-semibold">Recevoir les nouveautés & accès API</h3>
-          <p className="text-sm text-slate-600 mt-1">Inscrivez-vous pour être averti dès l’ouverture des packs payants et des intégrations CMS.</p>
+          <p className="text-sm text-slate-600 mt-1">
+            Inscrivez-vous pour être averti dès l’ouverture des packs payants et des intégrations CMS.
+          </p>
           <form className="mt-4 flex flex-col sm:flex-row gap-3" onSubmit={handleLeadSubmit}>
             <input
               name="email"
@@ -554,7 +655,9 @@ export default function HomePage() {
             />
             <button type="submit" className="btn btn-primary">Me tenir au courant</button>
           </form>
-          <p className="text-[11px] text-slate-500 mt-2">En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription à tout moment.</p>
+          <p className="text-[11px] text-slate-500 mt-2">
+            En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription à tout moment.
+          </p>
         </div>
       </section>
 
@@ -593,6 +696,13 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* CTA sticky mobile */}
+      <div className="fixed bottom-3 inset-x-3 sm:hidden z-40">
+        <a href="#try" className="btn btn-primary w-full shadow-lg shadow-indigo-600/20" aria-label="Aller à l’outil d’optimisation">
+          Optimiser une image
+        </a>
+      </div>
     </main>
   );
-            }
+                  }
