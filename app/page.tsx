@@ -13,7 +13,7 @@ export default function HomePage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
 
-  // NEW: état menu mobile
+  // NEW: menu mobile
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,6 +24,28 @@ export default function HomePage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  // Révélations au scroll (fade/slide)
+  useEffect(() => {
+    const els = document.querySelectorAll<HTMLElement>('[data-reveal]');
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.remove('opacity-0', 'translate-y-4');
+            e.target.classList.add('opacity-100', 'translate-y-0');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach((el) => {
+      el.classList.add('transition-all', 'duration-500', 'opacity-0', 'translate-y-4', 'will-change-transform');
+      io.observe(el);
+    });
+    return () => io.disconnect();
+  }, []);
 
   function isImage(file: File) {
     return /^image\/(png|jpe?g|webp|gif|bmp|tiff|svg\+xml)$/.test(file.type);
@@ -62,12 +84,11 @@ export default function HomePage() {
     } catch {}
   }
 
-  // Sanitize pour un nom de fichier SEO propre
+  // Slug pour nom de fichier
   function slugify(input: string) {
     return input
       .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 80);
@@ -82,9 +103,7 @@ export default function HomePage() {
     }
 
     if (!canUseToday(3)) {
-      setErrorMsg(
-        'Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.'
-      );
+      setErrorMsg('Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.');
       setResult(null);
       return;
     }
@@ -95,7 +114,6 @@ export default function HomePage() {
     setFileName(file.name);
     setOriginalFile(file);
 
-    // aperçu
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -118,7 +136,6 @@ export default function HomePage() {
       const safe = data as GenResult;
       const alt = String(safe.alt_text || 'Image de produit sur fond clair');
       const tags = Array.isArray(safe.tags) ? safe.tags.map((t) => String(t)) : ['produit', 'photo', 'web'];
-
       setResult({ alt_text: alt, tags });
       bumpUse();
     } catch (e) {
@@ -154,20 +171,17 @@ export default function HomePage() {
     navigator.clipboard.writeText(text);
     const el = document.createElement('div');
     el.textContent = 'Copié ✅';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   }
 
-  // Téléchargement du fichier renommé (même contenu, nom optimisé SEO)
+  // Télécharger le même binaire avec un nom SEO
   function downloadRenamed() {
     if (!originalFile || !result) return;
-
     const extMatch = (originalFile.name.match(/\.[a-zA-Z0-9]+$/) || [''])[0] || '.jpg';
     const cleanBase = slugify(result.alt_text || 'image-optimisee');
     const newName = `${cleanBase}${extMatch}`;
-
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
@@ -178,7 +192,7 @@ export default function HomePage() {
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
-  // Export CSV (filename, alt, tags)
+  // CSV
   function downloadCSV() {
     if (!result) return;
     const rows = [
@@ -209,175 +223,177 @@ export default function HomePage() {
     e.currentTarget.reset();
     const el = document.createElement('div');
     el.textContent = 'Merci ! Nous vous recontactons très vite.';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1500);
   }
 
-  // Fermer le menu mobile quand on clique sur un lien d’ancre
+  // Nav mobile: scroll smooth puis fermeture
   function handleMobileNavClick(targetId: string) {
     setMobileOpen(false);
     const el = document.querySelector(targetId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white text-slate-900">
-      {/* NAV + HERO — premium */}
-      <div className="relative overflow-hidden">
-        {/* Glow décoratif */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute -top-20 -right-24 h-72 w-72 rounded-full bg-indigo-300/30 blur-3xl"></div>
-          <div className="absolute top-32 -left-16 h-60 w-60 rounded-full bg-violet-300/30 blur-3xl"></div>
-        </div>
-
-        {/* HEADER STICKY */}
-        <div className="border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
-          <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">
-                T
-              </div>
-              <span className="font-semibold">Tagos.io</span>
-            </a>
-
-            {/* MENU DESKTOP */}
-            <div className="hidden sm:flex items-center gap-6 text-sm">
-              <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
-              <a href="#try" className="hover:text-indigo-600">Essayer</a>
-              <a href="#plans" className="hover:text-indigo-600">Offres</a>
-              <a href="#partners" className="hover:text-indigo-600">Partenaires</a>
-              <a href="#faq" className="hover:text-indigo-600">FAQ</a>
-              <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">Optimiser</a>
-            </div>
-
-            {/* HAMBURGER MOBILE */}
-            <button
-              type="button"
-              className="sm:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              aria-label="Ouvrir le menu"
-              aria-expanded={mobileOpen}
-              aria-controls="mobile-menu"
-              onClick={() => setMobileOpen((v) => !v)}
-            >
-              {/* Icône burger / close */}
-              {!mobileOpen ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                  <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              )}
-            </button>
-          </nav>
-
-          {/* OVERLAY MOBILE */}
-          <div
-            className={[
-              'sm:hidden fixed inset-0 bg-slate-900/40 transition-opacity',
-              mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
-            ].join(' ')}
-            aria-hidden={!mobileOpen}
-            onClick={() => setMobileOpen(false)}
-          />
-
-          {/* DRAWER MOBILE */}
-          <div
-            id="mobile-menu"
-            className={[
-              'sm:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-xl transition-transform duration-200',
-              mobileOpen ? 'translate-x-0' : 'translate-x-full',
-            ].join(' ')}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <span className="font-semibold">Menu</span>
-              <button
-                className="rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Fermer le menu"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-            <nav className="p-4 flex flex-col gap-3 text-sm">
-              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>Ce que vous gagnez</button>
-              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>Essayer</button>
-              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>Offres</button>
-              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#partners')}>Partenaires</button>
-              <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>FAQ</button>
-              <button
-                className="btn btn-primary mt-2"
-                onClick={() => handleMobileNavClick('#try')}
-              >
-                Optimiser une image
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* HERO */}
-        <header className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
-          <div className="grid gap-10 sm:grid-cols-2 items-center">
-            <div>
-              <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
-                Le référencement d’images, simplifié
-              </span>
-              <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
-                Faites <span className="text-indigo-600">trouver</span> vos images.
-              </h1>
-              <p className="mt-4 text-slate-600 text-lg sm:text-xl">
-                Tagos transforme chaque image en contenu compris par les moteurs&nbsp;: texte alternatif clair,
-                mots-clés pertinents, nom de fichier propre, données structurées et snippet sitemap — prêts à intégrer.
-              </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">
-                  🚀 Optimiser une image
-                </a>
-                <a href="#value" className="btn w-full sm:w-auto">Voir tout ce que vous gagnez</a>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Aucune inscription • 3 images gratuites/jour • Fichiers non stockés
-              </p>
-            </div>
-
-            {/* Carte réassurance */}
-            <div className="card p-6 bg-white/80 backdrop-blur shadow-xl border border-white/60">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
-                  <div className="text-[11px] text-slate-500">Accessibilité</div>
-                  <div className="font-medium mt-1">ALT prêt à l’emploi</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
-                  <div className="text-[11px] text-slate-500">Découverte</div>
-                  <div className="font-medium mt-1">Mots-clés pertinents</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
-                  <div className="text-[11px] text-slate-500">Propreté</div>
-                  <div className="font-medium mt-1">Nom de fichier optimisé</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
-                  <div className="text-[11px] text-slate-500">Indexation</div>
-                  <div className="font-medium mt-1">JSON-LD & sitemap</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+      {/* ARRIÈRE-PLANS DOUX */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-indigo-300/25 blur-3xl"></div>
+        <div className="absolute top-60 -left-12 h-72 w-72 rounded-full bg-violet-300/25 blur-3xl"></div>
       </div>
 
+      {/* HEADER STICKY */}
+      <div className="sticky top-0 z-50 border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/25 grid place-items-center text-white font-bold">T</div>
+            <span className="font-semibold">Tagos.io</span>
+          </a>
+
+          {/* Desktop */}
+          <div className="hidden sm:flex items-center gap-6 text-sm">
+            <a href="#problem" className="hover:text-indigo-600">Problèmes</a>
+            <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
+            <a href="#try" className="hover:text-indigo-600">Essayer</a>
+            <a href="#plans" className="hover:text-indigo-600">Offres</a>
+            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
+            <a href="/login" className="hover:text-indigo-600">Se connecter</a>
+            <a href="/signup" className="btn btn-primary shadow-md shadow-indigo-600/20">Créer un compte</a>
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            className="sm:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="Ouvrir le menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {!mobileOpen ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+        </nav>
+
+        {/* Overlay mobile (plus sombre) */}
+        <div
+          className={[
+            'sm:hidden fixed inset-0 bg-slate-900/60 transition-opacity',
+            mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+          ].join(' ')}
+          aria-hidden={!mobileOpen}
+          onClick={() => setMobileOpen(false)}
+        />
+
+        {/* Drawer mobile : fond BLANC plein, non transparent */}
+        <div
+          id="mobile-menu"
+          className={[
+            'sm:hidden fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transition-transform duration-200 z-[60]',
+            mobileOpen ? 'translate-x-0' : 'translate-x-full',
+          ].join(' ')}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <span className="font-semibold">Menu</span>
+            <button
+              className="rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Fermer le menu"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <nav className="p-4 flex flex-col gap-3 text-sm">
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#problem')}>Problèmes</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>Ce que vous gagnez</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>Essayer</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>Offres</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>FAQ</button>
+            <a href="/login" className="mt-3 hover:text-indigo-600">Se connecter</a>
+            <a href="/signup" className="btn btn-primary mt-1">Créer un compte</a>
+          </nav>
+        </div>
+      </div>
+
+      {/* HERO */}
+      <header className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <div className="grid gap-10 sm:grid-cols-2 items-center">
+          <div data-reveal>
+            <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
+              Le référencement d’images, simplifié
+            </span>
+            <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
+              Faites <span className="text-indigo-600">trouver</span> vos images.
+            </h1>
+            <p className="mt-4 text-slate-600 text-lg sm:text-xl">
+              Tagos transforme chaque image en contenu compris par les moteurs&nbsp;: texte alternatif clair,
+              mots-clés pertinents, nom de fichier propre, données structurées & extrait sitemap — prêts à intégrer.
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">🚀 Optimiser une image</a>
+              <a href="#value" className="btn w-full sm:w-auto">Voir tout ce que vous gagnez</a>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
+          </div>
+
+          <div data-reveal className="card p-6 bg-white/85 backdrop-blur shadow-xl border border-white/60">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+                <div className="text-[11px] text-slate-500">Accessibilité</div>
+                <div className="font-medium mt-1">ALT prêt à l’emploi</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+                <div className="text-[11px] text-slate-500">Découverte</div>
+                <div className="font-medium mt-1">Mots-clés pertinents</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+                <div className="text-[11px] text-slate-500">Propreté</div>
+                <div className="font-medium mt-1">Nom de fichier optimisé</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+                <div className="text-[11px] text-slate-500">Indexation</div>
+                <div className="font-medium mt-1">JSON-LD & sitemap</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* PROBLÈMES ACTUELS */}
+      <section id="problem" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
+        <h2 data-reveal className="text-2xl font-semibold mb-6 text-center">Pourquoi vos images restent invisibles</h2>
+        <div className="grid sm:grid-cols-3 gap-6 text-sm">
+          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">ALT manquant ou vague</div>
+            Sans description, les moteurs ne savent pas ce que montre l’image.
+          </div>
+          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">Fichier “IMG_1234.jpg”</div>
+            Un nom générique ne porte aucune information utile au classement.
+          </div>
+          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+            <div className="text-base font-medium mb-1">Aucun signal d’indexation</div>
+            Pas de données structurées, pas d’entrée sitemap → découverte plus lente.
+          </div>
+        </div>
+      </section>
+
       {/* CE QUE VOUS GAGNEZ */}
-      <section id="value" className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-2xl font-semibold mb-2 text-center">Tout ce qui compte pour le référencement d’une image</h2>
-        <p className="text-center text-slate-600 mb-8">1 envoi = 6 livrables immédiats, à coller dans votre CMS.</p>
+      <section id="value" className="mx-auto max-w-6xl px-4 py-12">
+        <h2 data-reveal className="text-2xl font-semibold mb-2 text-center">Tout ce qui compte pour référencer une image</h2>
+        <p data-reveal className="text-center text-slate-600 mb-8">1 envoi = 6 livrables immédiats à coller dans votre CMS.</p>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           {[
             ['Texte alternatif (ALT)', 'Description claire et concise de l’image.'],
@@ -387,7 +403,7 @@ export default function HomePage() {
             ['Légende / contexte', 'Phrase courte à placer sous l’image.'],
             ['Données structurées + Sitemap', 'JSON-LD ImageObject et snippet sitemap.'],
           ].map(([t, d], i) => (
-            <div key={i} className="card p-5 shadow-md hover:shadow-lg transition">
+            <div key={i} data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
               <div className="text-base font-medium mb-1">{t}</div>
               <div className="text-slate-600">{d}</div>
             </div>
@@ -397,7 +413,7 @@ export default function HomePage() {
 
       {/* OUTIL */}
       <section id="try" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
-        <h2 className="text-2xl font-semibold mb-5 text-center">Essayez maintenant</h2>
+        <h2 data-reveal className="text-2xl font-semibold mb-5 text-center">Essayez maintenant</h2>
 
         <div
           onDrop={onDrop}
@@ -407,6 +423,7 @@ export default function HomePage() {
             'rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl',
             dragging ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-300 bg-white',
           ].join(' ')}
+          data-reveal
         >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="text-center sm:text-left">
@@ -435,7 +452,9 @@ export default function HomePage() {
                   decoding="async"
                   className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow"
                 />
-                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">{fileName}</p>
+                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">
+                  {fileName}
+                </p>
               </div>
             )}
           </div>
@@ -446,11 +465,7 @@ export default function HomePage() {
         </div>
 
         {busy && (
-          <div
-            className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl"
-            role="status"
-            aria-live="polite"
-          >
+          <div className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl" role="status" aria-live="polite">
             <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
             Génération en cours…
             <span className="sr-only">Veuillez patienter, génération en cours</span>
@@ -464,15 +479,13 @@ export default function HomePage() {
         )}
 
         {result && !errorMsg && (
-          <div className="mt-6 card p-6 shadow-lg mx-auto max-w-3xl">
+          <div className="mt-6 card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
             <div className="text-sm leading-relaxed">
               <strong>ALT :</strong> {result.alt_text}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {result.tags.map((tag, i) => (
-                <span key={i} className="chip">
-                  {tag}
-                </span>
+                <span key={i} className="chip">{tag}</span>
               ))}
             </div>
 
@@ -582,9 +595,9 @@ export default function HomePage() {
 
       {/* PLANS */}
       <section id="plans" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Des offres claires</h2>
+        <h2 data-reveal className="text-2xl font-semibold mb-6 text-center">Des offres claires</h2>
         <div className="grid sm:grid-cols-4 gap-6">
-          <div className="card p-6 shadow-md">
+          <div data-reveal className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Essai gratuit</div>
             <div className="mt-1 text-slate-500 text-sm">Pour tester la qualité</div>
             <div className="mt-4 text-3xl font-extrabold">3 / jour</div>
@@ -596,59 +609,47 @@ export default function HomePage() {
             <a href="#try" className="btn btn-primary mt-6 inline-block">Essayer</a>
           </div>
 
-          <div className="card p-6 shadow-lg border-indigo-200">
+          <div data-reveal className="card p-6 shadow-lg border-indigo-200">
             <div className="text-lg font-semibold">Starter</div>
             <div className="mt-1 text-slate-500 text-sm">Pour petits sites</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              7 € <span className="text-base font-normal text-slate-500">/ 300 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">7 € <span className="text-base font-normal text-slate-500">/ 300 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 300 images</li>
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Import / export CSV</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir" className="btn mt-6 inline-block">
-              Me prévenir
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
           </div>
 
-          <div className="card p-6 shadow-md">
+          <div data-reveal className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Pro</div>
             <div className="mt-1 text-slate-500 text-sm">Pour e-commerce</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 1 500 images</li>
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">
-              Me prévenir
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
           </div>
 
-          <div className="card p-6 shadow-md">
+          <div data-reveal className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Agence</div>
             <div className="mt-1 text-slate-500 text-sm">Pour gros volumes</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• 5 000 images</li>
               <li>• API & intégrations</li>
               <li>• SLA & support dédié</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">
-              Contacter
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">Contacter</a>
           </div>
         </div>
       </section>
 
       {/* PARTENAIRES */}
       <section id="partners" className="mx-auto max-w-6xl px-4 pb-14">
-        <div className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
+        <div data-reveal className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
           <div className="grid sm:grid-cols-2 gap-6 items-center">
             <div>
               <h3 className="text-lg font-semibold">Pour créateurs de sites & agences</h3>
@@ -675,7 +676,7 @@ export default function HomePage() {
 
       {/* NEWSLETTER */}
       <section id="newsletter" className="mx-auto max-w-4xl px-4 pb-14">
-        <div className="card p-6 shadow-md">
+        <div data-reveal className="card p-6 shadow-md">
           <h3 className="text-lg font-semibold">Recevoir les nouveautés & accès API</h3>
           <p className="text-sm text-slate-600 mt-1">Soyez averti dès l’ouverture des packs payants et des intégrations CMS.</p>
           <form className="mt-4 flex flex-col sm:flex-row gap-3" onSubmit={handleLeadSubmit}>
@@ -695,21 +696,21 @@ export default function HomePage() {
 
       {/* FAQ */}
       <section id="faq" className="mx-auto max-w-6xl px-4 pb-16">
-        <h2 className="text-2xl font-semibold mb-6 text-center">FAQ</h2>
+        <h2 data-reveal className="text-2xl font-semibold mb-6 text-center">FAQ</h2>
         <div className="grid sm:grid-cols-2 gap-6 text-sm">
-          <div className="card p-5 shadow-sm">
+          <div data-reveal className="card p-5 shadow-sm">
             <div className="font-medium mb-1">Stockez-vous mes images ?</div>
             Non. Les fichiers sont traités en mémoire puis supprimés immédiatement.
           </div>
-          <div className="card p-5 shadow-sm">
+          <div data-reveal className="card p-5 shadow-sm">
             <div className="font-medium mb-1">Est-ce compatible avec mon CMS ?</div>
             Oui : WordPress, Shopify, Webflow… Copiez/collez, export CSV, ou utilisez l’image renommée.
           </div>
-          <div className="card p-5 shadow-sm">
+          <div data-reveal className="card p-5 shadow-sm">
             <div className="font-medium mb-1">Langues disponibles</div>
             Français dès maintenant. Anglais et Espagnol arrivent.
           </div>
-          <div className="card p-5 shadow-sm">
+          <div data-reveal className="card p-5 shadow-sm">
             <div className="font-medium mb-1">Limites d’upload</div>
             Jusqu’à 5 Mo par image. Préférez JPG / WEBP optimisés.
           </div>
@@ -730,4 +731,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-      }
+  }
