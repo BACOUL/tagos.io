@@ -1,52 +1,101 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Inter, Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 
-const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
-const poppins = Poppins({ subsets: ["latin"], weight: ["600","800"], display: "swap", variable: "--font-pop" });
+const inter = Inter({ subsets: ["latin"], display: "swap" });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#4F46E5",
+  colorScheme: "light",
+};
 
 export const metadata: Metadata = {
-  title: "Tagos.io — ALT & tags SEO pour vos images",
-  description:
-    "Générez automatiquement des textes ALT clairs et des tags SEO pour vos images. Simple, rapide, compatible WordPress/Shopify/Webflow.",
   metadataBase: new URL("https://tagos.io"),
-  icons: { icon: "/favicon.svg" },
-  robots: { index: true, follow: true },
-  keywords: ["alt image", "seo image", "balise alt", "tags seo", "référencement images", "WordPress", "Shopify"],
+  title: {
+    default: "Tagos.io — Rendez vos images visibles",
+    template: "%s — Tagos.io",
+  },
+  description:
+    "Tagos transforme vos images en contenu compréhensible par Google : ALT clair, mots-clés pertinents et nom de fichier optimisé — en quelques secondes.",
+  applicationName: "Tagos.io",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
-    title: "Tagos.io — La visibilité, automatisée.",
-    description: "ALT & mots-clés générés par IA — sans plugin.",
-    url: "https://tagos.io",
-    siteName: "Tagos.io",
     type: "website",
-    images: ["/og-image.svg"],
+    url: "https://tagos.io",
+    title: "Tagos.io — Rendez vos images visibles",
+    description:
+      "ALT, mots-clés et renommage de fichier optimisés automatiquement. Essayez gratuitement (3 images/jour).",
+    siteName: "Tagos.io",
+    images: [
+      {
+        url: "/og-cover.png",
+        width: 1200,
+        height: 630,
+        alt: "Tagos.io — Optimisation d’images automatique (ALT + tags + renommage)",
+      },
+    ],
+    locale: "fr_FR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tagos.io — Rendez vos images visibles",
+    description:
+      "ALT clair, mots-clés pertinents et nom de fichier optimisé — en quelques secondes.",
+    images: ["/og-cover.png"],
+  },
+  alternates: {
+    canonical: "https://tagos.io/",
+  },
+  category: "technology",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const ld = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Tagos.io",
-    applicationCategory: "SEO",
-    operatingSystem: "Web",
-    description: "ALT & tags SEO pour images générés par IA",
-    offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" }
-  };
-
   return (
-    <html lang="fr" className={`${inter.variable} ${poppins.variable}`}>
+    <html lang="fr" className={inter.className}>
       <body className="bg-white text-slate-900 antialiased">
-        {/* JSON-LD SEO */}
+        {/* JSON-LD Organization (SEO) */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "Tagos.io",
+              applicationCategory: "SEO Tool",
+              operatingSystem: "Web",
+              url: "https://tagos.io",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "EUR",
+              },
+              description:
+                "Optimisation d’images automatique : ALT, mots-clés et nom de fichier optimisés pour le SEO.",
+            }),
+          }}
         />
         {children}
-
-        {/* Analytics RGPD (Plausible) — change data-domain si besoin */}
-        <script defer data-domain="tagos.io" src="https://plausible.io/js/script.js" />
       </body>
     </html>
   );
-}
+          }
