@@ -59,12 +59,11 @@ export default function HomePage() {
     } catch {}
   }
 
-  // Sanitize pour un nom de fichier SEO propre
+  // Slugify pour un nom de fichier SEO propre
   function slugify(input: string) {
     return input
       .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 80);
@@ -79,9 +78,7 @@ export default function HomePage() {
     }
 
     if (!canUseToday(3)) {
-      setErrorMsg(
-        'Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.'
-      );
+      setErrorMsg('Limite atteinte : 3 images gratuites/jour. Passez au pack 300 pour continuer sans limite quotidienne.');
       setResult(null);
       return;
     }
@@ -92,7 +89,6 @@ export default function HomePage() {
     setFileName(file.name);
     setOriginalFile(file);
 
-    // aperçu
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -151,13 +147,12 @@ export default function HomePage() {
     navigator.clipboard.writeText(text);
     const el = document.createElement('div');
     el.textContent = 'Copié ✅';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   }
 
-  // Téléchargement du fichier renommé (même contenu, nom optimisé SEO)
+  // Télécharger l’image renommée (contenu identique, nom optimisé)
   function downloadRenamed() {
     if (!originalFile || !result) return;
 
@@ -194,7 +189,7 @@ export default function HomePage() {
     URL.revokeObjectURL(url);
   }
 
-  // Capture email (sans backend) – affiche un toast
+  // Capture email (sans backend) – toast
   function handleLeadSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -206,8 +201,7 @@ export default function HomePage() {
     e.currentTarget.reset();
     const el = document.createElement('div');
     el.textContent = 'Merci ! Nous vous recontactons très vite.';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1500);
   }
@@ -218,61 +212,45 @@ export default function HomePage() {
       <div className="border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
         <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">
-              T
-            </div>
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">T</div>
             <span className="font-semibold">Tagos.io</span>
           </a>
           <div className="hidden sm:flex items-center gap-6 text-sm">
-            <a href="#why" className="hover:text-indigo-600">
-              Pourquoi
-            </a>
-            <a href="#before-after" className="hover:text-indigo-600">
-              Avant/Après
-            </a>
-            <a href="#usecases" className="hover:text-indigo-600">
-              Cas d’usage
-            </a>
-            <a href="#pricing" className="hover:text-indigo-600">
-              Tarifs
-            </a>
-            <a href="#faq" className="hover:text-indigo-600">
-              FAQ
-            </a>
-            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">
-              Essayer
-            </a>
+            <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
+            <a href="#levers" className="hover:text-indigo-600">Tout ce qu’on optimise</a>
+            <a href="#before-after" className="hover:text-indigo-600">Avant/Après</a>
+            <a href="#try" className="hover:text-indigo-600">Essai</a>
+            <a href="#pricing" className="hover:text-indigo-600">Tarifs</a>
+            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
+            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">Essayer</a>
           </div>
         </nav>
       </div>
 
-      {/* HERO */}
+      {/* HERO — Promesse claire */}
       <header className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
         <div className="grid gap-10 sm:grid-cols-2 items-center">
           <div>
             <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
-              Rendez vos images visibles
+              La référence mondiale du référencement d’images
             </span>
             <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
-              Des images que Google comprend.
+              Chaque image devient <span className="text-indigo-600">trouvable</span>.
             </h1>
             <p className="mt-4 text-slate-600 text-lg sm:text-xl">
-              Tagos transforme vos visuels en contenu lisible pour les moteurs : texte alternatif clair, mots-clés
-              pertinents et nom de fichier optimisé — en quelques secondes.
+              Tagos transforme vos visuels en contenu compris par Google : ALT clair, mots-clés pertinents,
+              nom de fichier optimisé, données structurées et plus — en moins d’une minute.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">
-                🚀 Optimiser mes images
-              </a>
-              <a href="#how" className="btn w-full sm:w-auto">
-                Comment ça marche
-              </a>
+              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">🚀 Optimiser une image</a>
+              <a href="#value" className="btn w-full sm:w-auto">Ce que vous y gagnez</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
           </div>
 
+          {/* Carte "Avant/Après" Hero */}
           <div className="card p-6 bg-white/80 backdrop-blur shadow-lg">
-            <div className="text-sm font-medium mb-2">Avant / Après (exemple)</div>
+            <div className="text-sm font-medium mb-2">Avant / Après (exemple rapide)</div>
             <div className="text-sm mb-2">
               <span className="font-semibold">Nom fichier :</span>{' '}
               <span className="text-slate-700 line-through decoration-rose-400 decoration-2">IMG_1023.jpg</span>{' '}
@@ -285,79 +263,73 @@ export default function HomePage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {['bague', 'or-rose', 'diamant', 'femme', 'bijoux'].map((t, i) => (
-                <span key={i} className="chip">
-                  {t}
-                </span>
+                <span key={i} className="chip">{t}</span>
               ))}
             </div>
-            <div className="mt-4 text-xs text-slate-500">Résultat prêt à indexer et accessible</div>
+            <div className="mt-4 text-xs text-slate-500">Prêt à indexer, accessible et cohérent avec votre page</div>
           </div>
         </div>
       </header>
 
-      {/* STRIP CONFIANCE — sans logos */}
-      <section className="bg-white/60 border-y border-slate-200">
-        <div className="mx-auto max-w-6xl px-4 py-6">
+      {/* Bandeau bénéfices business */}
+      <section id="value" className="bg-white/60 border-y border-slate-200">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <h2 className="text-xl font-semibold text-center mb-4">Ce que vous y gagnez, concrètement</h2>
           <div className="grid sm:grid-cols-3 gap-6 text-sm text-slate-700">
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
-                ✓
-              </span>
-              <div>
-                <div className="font-medium">Confidentialité</div>
-                <div className="text-xs text-slate-500">Aucune image conservée</div>
-              </div>
+            <div className="card p-5 shadow-sm">
+              <div className="font-medium mb-1">Plus de visibilité</div>
+              Vos images apparaissent sur Google Images et dans les résultats enrichis produits/articles.
             </div>
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
-                ⚙
-              </span>
-              <div>
-                <div className="font-medium">Compatible CMS</div>
-                <div className="text-xs text-slate-500">WordPress • Shopify • Webflow • PrestaShop</div>
-              </div>
+            <div className="card p-5 shadow-sm">
+              <div className="font-medium mb-1">Plus de clics</div>
+              Des titres et descriptions clairs augmentent le taux de clic (CTR) vers vos pages.
             </div>
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-                ★
-              </span>
-              <div>
-                <div className="font-medium">Qualité</div>
-                <div className="text-xs text-slate-500">ALT concis, mots-clés pertinents</div>
-              </div>
+            <div className="card p-5 shadow-sm">
+              <div className="font-medium mb-1">Plus de ventes</div>
+              Chaque visuel devient une porte d’entrée vers vos fiches produit ou articles.
             </div>
           </div>
+          <p className="mt-4 text-center text-xs text-slate-500">
+            Aujourd’hui, une grande partie des images du web sont mal renseignées ou muettes. Tagos corrige ça en 60 s.
+          </p>
         </div>
       </section>
 
-      {/* POURQUOI */}
-      <section id="why" className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Pourquoi vos images n’apparaissent pas sur Google ?</h2>
-        <div className="grid sm:grid-cols-3 gap-6 text-sm">
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Images “muettes”</div>
-            Sans ALT, nom clair ni mots-clés, une image est invisible pour les moteurs de recherche.
-          </div>
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Accessibilité oubliée</div>
-            Les lecteurs d’écran ne peuvent pas décrire vos visuels sans texte alternatif.
-          </div>
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Temps perdu</div>
-            Écrire tout à la main est long et rarement fait. Tagos l’automatise proprement.
-          </div>
+      {/* Les 10 leviers activés */}
+      <section id="levers" className="mx-auto max-w-6xl px-4 py-14">
+        <h2 className="text-2xl font-semibold mb-2 text-center">Tout ce qu’on optimise, en un clic</h2>
+        <p className="text-center text-slate-600 mb-8 text-sm">Tagos active l’ensemble des leviers qui comptent pour le référencement d’images.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          {[
+            ['Nom de fichier', 'Des noms courts, clairs, sémantiques.'],
+            ['Texte ALT', 'Des ALT compréhensibles et concis.'],
+            ['Mots-clés', 'Tags sémantiques pertinents et hiérarchisés.'],
+            ['Title (info-bulle)', 'Renforce la compréhension et le clic.'],
+            ['Contexte recommandé', 'Légende / texte autour à insérer.'],
+            ['Métadonnées (IPTC/XMP)*', 'Auteur, copyright, description.'],
+            ['Données structurées', 'JSON-LD ImageObject prêt à coller.'],
+            ['Sitemap images*', 'Découverte de toutes vos images.'],
+            ['Compression & format*', 'Poids réduit, vitesse accrue.'],
+            ['Accessibilité', 'Bonnes pratiques (WCAG) respectées.']
+          ].map(([title, desc], i) => (
+            <div key={i} className="card p-4 shadow-sm">
+              <div className="font-medium">{title}</div>
+              <div className="text-slate-600 mt-1">{desc}</div>
+            </div>
+          ))}
         </div>
+        <p className="text-[11px] text-slate-500 mt-3">*Disponible dans les offres à venir (Pro / Expert / API).</p>
       </section>
 
-      {/* AVANT / APRÈS visuel démo */}
+      {/* Section Avant/Après visuelle */}
       <section id="before-after" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Avant / Après : impact immédiat</h2>
+        <h2 className="text-2xl font-semibold mb-6 text-center">Avant / Après : le changement immédiat</h2>
         <div className="grid sm:grid-cols-2 gap-6 text-sm">
           <div className="card p-5 shadow-md">
             <div className="text-slate-500 text-xs mb-2">Avant</div>
             <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
               <div className="h-40 rounded-md bg-slate-200 grid place-items-center text-slate-500">Image</div>
-              <div className="mt-3 text-xs text-slate-500">ALT manquant · Nom de fichier générique</div>
+              <div className="mt-3 text-xs text-slate-500">ALT manquant · Nom générique · Aucun mot-clé</div>
               <div className="mt-1 text-[11px] text-slate-400">IMG_3456.png</div>
             </div>
           </div>
@@ -365,15 +337,9 @@ export default function HomePage() {
             <div className="text-slate-500 text-xs mb-2">Après Tagos</div>
             <div className="rounded-xl border border-slate-200 p-4 bg-white">
               <div className="h-40 rounded-md bg-slate-100 grid place-items-center text-slate-500">Image</div>
-              <div className="mt-3 text-xs text-slate-600">
-                <b>ALT :</b> Chaise design en bois clair pour salle à manger
-              </div>
+              <div className="mt-3 text-xs text-slate-600"><b>ALT :</b> Chaise design en bois clair pour salle à manger</div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {['chaise', 'bois-clair', 'design', 'salle-a-manger', 'mobilier'].map((t, i) => (
-                  <span key={i} className="chip">
-                    {t}
-                  </span>
-                ))}
+                {['chaise','bois-clair','design','salle-a-manger','mobilier'].map((t,i)=><span key={i} className="chip">{t}</span>)}
               </div>
               <div className="mt-2 text-[11px] text-slate-500">chaise-design-bois-clair-salle-a-manger.jpg</div>
             </div>
@@ -381,27 +347,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CAS D’USAGE */}
-      <section id="usecases" className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Conçu pour vos usages</h2>
-        <div className="grid sm:grid-cols-3 gap-6 text-sm">
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">E-commerce</div>
-            Catégories, fiches produit, variations — normalisez vos visuels pour la recherche d’images et Google
-            Shopping.
-          </div>
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Immobilier</div>
-            Vues intérieure/extérieure, pièces et caractéristiques. Facilitez la découverte de vos annonces.
-          </div>
-          <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Blogs & Médias</div>
-            Illustrations, tutoriels, comparatifs — chaque image devient une entrée de trafic potentiel.
-          </div>
-        </div>
-      </section>
-
-      {/* OUTIL (essai) */}
+      {/* Essai outil */}
       <section id="try" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-5 text-center">Essayez maintenant</h2>
 
@@ -450,11 +396,7 @@ export default function HomePage() {
         </div>
 
         {busy && (
-          <div
-            className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl"
-            role="status"
-            aria-live="polite"
-          >
+          <div className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl" role="status" aria-live="polite">
             <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
             Génération en cours…
             <span className="sr-only">Veuillez patienter, génération en cours</span>
@@ -474,24 +416,14 @@ export default function HomePage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {result.tags.map((tag, i) => (
-                <span key={i} className="chip">
-                  {tag}
-                </span>
+                <span key={i} className="chip">{tag}</span>
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => copy(result.alt_text)} className="btn">
-                Copier l’ALT
-              </button>
-              <button onClick={() => copy(result.tags.join(', '))} className="btn">
-                Copier les mots-clés
-              </button>
-              <button onClick={downloadCSV} className="btn">
-                Exporter en CSV
-              </button>
-              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">
-                Télécharger l’image renommée
-              </button>
+              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
+              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les mots-clés</button>
+              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
+              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">Télécharger l’image renommée</button>
             </div>
             <p className="mt-3 text-[12px] text-slate-500">
               Astuce : renommez vos fichiers avec une description claire. Les CMS et Google comprennent mieux le contenu.
@@ -500,47 +432,34 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* TÉMOIGNAGES */}
+      {/* Témoignages */}
       <section id="testimonials" className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Ils ont amélioré la visibilité de leurs images</h2>
+        <h2 className="text-2xl font-semibold mb-6 text-center">Ils rendent leurs images visibles avec Tagos</h2>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
-          <div className="card p-5 shadow-md">
-            <div className="text-slate-700">
-              “On a normalisé 800 photos produits en une journée. Le gain de temps est fou.”
+          {[
+            ['“On a normalisé 800 photos produits en une journée. Le gain de temps est fou.”', '— Marine, E-commerce'],
+            ['“Les ALT sont propres, courts, et nos pages passent mieux en accessibilité.”', '— Karim, Agence Web'],
+            ['“Enfin une méthode simple pour nommer correctement nos visuels.”', '— Léa, Média en ligne'],
+          ].map(([quote, author], i) => (
+            <div key={i} className="card p-5 shadow-md">
+              <div className="text-slate-700">{quote}</div>
+              <div className="mt-3 text-xs text-slate-500">{author}</div>
             </div>
-            <div className="mt-3 text-xs text-slate-500">— Marine, E-commerce</div>
-          </div>
-          <div className="card p-5 shadow-md">
-            <div className="text-slate-700">
-              “Les ALT sont propres, courts, et nos pages passent mieux en accessibilité.”
-            </div>
-            <div className="mt-3 text-xs text-slate-500">— Karim, Agence Web</div>
-          </div>
-          <div className="card p-5 shadow-md">
-            <div className="text-slate-700">“On a enfin une méthode simple pour nommer correctement nos visuels.”</div>
-            <div className="mt-3 text-xs text-slate-500">— Léa, Média en ligne</div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* COMMENT ÇA MARCHE */}
+      {/* Comment ça marche */}
       <section id="how" className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-2xl font-semibold mb-6 text-center">3 étapes pour rendre vos images visibles</h2>
+        <h2 className="text-2xl font-semibold mb-6 text-center">3 étapes pour publier des images trouvables</h2>
         <ol className="grid sm:grid-cols-3 gap-6 text-sm">
-          <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">1</div>Téléversez vos images (JPG, PNG, WEBP).
-          </li>
-          <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">2</div>Un texte alternatif clair, des mots-clés et un nom de fichier optimisé
-            sont générés.
-          </li>
-          <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">3</div>Copiez, exportez en CSV ou téléchargez l’image renommée.
-          </li>
+          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">1</div>Téléversez votre image.</li>
+          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">2</div>Récupérez ALT + mots-clés + nom optimisé.</li>
+          <li className="card p-5 shadow-sm"><div className="text-2xl mb-1">3</div>Intégrez-les à votre CMS (ou téléchargez l’image renommée).</li>
         </ol>
       </section>
 
-      {/* TARIFS */}
+      {/* Tarifs */}
       <section id="pricing" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-6 text-center">Des tarifs simples, sans abonnement</h2>
         <div className="grid sm:grid-cols-4 gap-6">
@@ -553,74 +472,52 @@ export default function HomePage() {
               <li>• Export CSV</li>
               <li>• Image renommée</li>
             </ul>
-            <a href="#try" className="btn btn-primary mt-6 inline-block">
-              Essayer
-            </a>
+            <a href="#try" className="btn btn-primary mt-6 inline-block">Essayer</a>
           </div>
 
           <div className="card p-6 shadow-lg border-indigo-200">
             <div className="text-lg font-semibold">Starter</div>
             <div className="mt-1 text-slate-500 text-sm">Pour petits sites</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              7 € <span className="text-base font-normal text-slate-500">/ 300 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">7 € <span className="text-base font-normal text-slate-500">/ 300 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 300 images</li>
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Import / export CSV</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir"
-              className="btn mt-6 inline-block"
-            >
-              Me prévenir
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
           </div>
 
           <div className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Pro</div>
             <div className="mt-1 text-slate-500 text-sm">Pour e-commerce</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 1 500 images</li>
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">
-              Me prévenir
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
           </div>
 
           <div className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Agence</div>
             <div className="mt-1 text-slate-500 text-sm">Pour gros volumes</div>
-            <div className="mt-4 text-3xl font-extrabold">
-              49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span>
-            </div>
+            <div className="mt-4 text-3xl font-extrabold">49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span></div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• 5 000 images</li>
               <li>• API & intégrations</li>
               <li>• SLA & support dédié</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact"
-              className="btn mt-6 inline-block"
-            >
-              Contacter
-            </a>
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">Contacter</a>
           </div>
         </div>
       </section>
 
-      {/* CAPTURE EMAIL */}
+      {/* Newsletter / Leads */}
       <section id="newsletter" className="mx-auto max-w-4xl px-4 py-12">
         <div className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
-          <h3 className="text-lg font-semibold">Recevoir les nouveautés & accès API</h3>
-          <p className="text-sm text-slate-600 mt-1">
-            Inscrivez-vous pour être averti dès l’ouverture des packs payants et des intégrations CMS.
-          </p>
+          <h3 className="text-lg font-semibold">Accédez aux nouveautés & intégrations CMS</h3>
+          <p className="text-sm text-slate-600 mt-1">Soyez prévenu dès l’ouverture des packs Pro/Expert, des plugins et de l’API.</p>
           <form className="mt-4 flex flex-col sm:flex-row gap-3" onSubmit={handleLeadSubmit}>
             <input
               name="email"
@@ -630,13 +527,9 @@ export default function HomePage() {
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
               aria-label="Votre email"
             />
-            <button type="submit" className="btn btn-primary">
-              Me tenir au courant
-            </button>
+            <button type="submit" className="btn btn-primary">Me tenir au courant</button>
           </form>
-          <p className="text-[11px] text-slate-500 mt-2">
-            En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription à tout moment.
-          </p>
+          <p className="text-[11px] text-slate-500 mt-2">En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription à tout moment.</p>
         </div>
       </section>
 
@@ -650,39 +543,31 @@ export default function HomePage() {
           </div>
           <div className="card p-5 shadow-sm">
             <div className="font-medium mb-1">Est-ce compatible avec mon CMS ?</div>
-            Oui : WordPress, Shopify, Webflow… Copiez/collez, export CSV, ou utilisez l’image renommée.
+            Oui : WordPress, Shopify, Webflow, PrestaShop… Copiez/collez, export CSV, ou utilisez l’image renommée.
           </div>
           <div className="card p-5 shadow-sm">
-            <div className="font-medium mb-1">Langues disponibles</div>
-            Français dès maintenant. Anglais et Espagnol arrivent.
+            <div className="font-medium mb-1">Qu’optimisez-vous exactement ?</div>
+            ALT, nom de fichier, tags, title, contexte recommandé, données structurées… et bientôt EXIF/IPTC, sitemap et compression.
           </div>
           <div className="card p-5 shadow-sm">
-            <div className="font-medium mb-1">Limites d’upload</div>
-            Jusqu’à 5 Mo par image. Préférez JPG / WEBP optimisés.
+            <div className="font-medium mb-1">Y a-t-il des limites ?</div>
+            5 Mo par image sur l’essai gratuit. Les packs Pro/Agence lèveront ces limites avec l’API.
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <footer className="mx-auto max-w-6xl px-4 py-10 border-t border-slate-200 text-sm text-slate-500">
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <p>© 2025 Tagos.io — Tous droits réservés.</p>
           <div className="flex gap-3">
-            <a href="/privacy" className="hover:text-slate-700">
-              Confidentialité
-            </a>
-            <a href="/legal" className="hover:text-slate-700">
-              Mentions légales
-            </a>
-            <a href="/terms" className="hover:text-slate-700">
-              Conditions
-            </a>
-            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">
-              Contact
-            </a>
+            <a href="/privacy" className="hover:text-slate-700">Confidentialité</a>
+            <a href="/legal" className="hover:text-slate-700">Mentions légales</a>
+            <a href="/terms" className="hover:text-slate-700">Conditions</a>
+            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">Contact</a>
           </div>
         </div>
       </footer>
     </main>
   );
-}
+                         }
