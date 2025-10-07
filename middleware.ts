@@ -1,55 +1,46 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-/**
- * Rate-limit minimal : 30 requêtes / minute / IP sur /api/*
- * NB: Sur Vercel, le middleware est sans état entre invocations.
- * Ce garde-fou suffit pour éviter les floods involontaires.
- * (Pour du cost control avancé, on passera plus tard à un store KV.)
- */
-
-const WINDOW_MS = 60_000; // 1 minute
-const MAX_REQ = 30;
-
-// En dev/SSR local, cette Map vivra en mémoire de process.
-// En production serverless, elle peut ne pas persister entre requêtes.
-const hits = new Map<string, { count: number; ts: number }>();
-
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const res = NextResponse.next();
 
-  // Ne cible que l’API
-  if (!pathname.startsWith("/api/")) return NextResponse.next();
-
-  // Récupération IP (ordre: req.ip -> x-forwarded-for -> fallback)
+  // IP client via en-têtes (pas de req.ip dans NextRequest)
   const ip =
-    req.ip ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    req.headers.get("cf-connecting-ip") ||
     "unknown";
 
-  const now = Date.now();
-  const rec = hits.get(ip);
+  // En-têtes de sécurité de base
+  res.headers.set("X-Frame-Options", "SAMEORIGIN");
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  // Exemple CSP très permissif côté style à cause de Tailwind inline; ajuste plus tard si besoin
+  res.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "img-src 'self' blob: data:",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "connect-src 'self'",
+      "font-src 'self' data:",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self' mailto:",
+    ].join("; ")
+  );
 
-  if (!rec || now - rec.ts > WINDOW_MS) {
-    hits.set(ip, { count: 1, ts: now });
-    return NextResponse.next();
-  }
+  // On expose l’IP côté réponse (utile pour logs côté edge/CDN)
+  res.headers.set("x-client-ip", ip);
 
-  if (rec.count >= MAX_REQ) {
-    return new NextResponse(
-      JSON.stringify({ error: "Trop de requêtes, réessayez d’ici une minute." }),
-      {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  rec.count += 1;
-  return NextResponse.next();
+  return res;
 }
 
+// On évite les fichiers statiques et images Next dans le middleware
 export const config = {
-  // On applique le middleware uniquement à /api/*
-  matcher: "/api/:path*",
+  matcher: [
+    "/((?!_next/static|_next/image|favicon|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)).*)",
+  ],
 };
