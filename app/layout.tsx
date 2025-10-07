@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={inter.className}>
       <body className="bg-white text-slate-900 antialiased">
-        {/* JSON-LD Organization (SEO) */}
+        {/* JSON-LD SoftwareApplication (existant) */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -94,8 +94,85 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }),
           }}
         />
+
+        {/* JSON-LD Product (packs) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: "Tagos.io",
+              description:
+                "Optimisation d’images automatique : ALT, mots-clés pertinents et renommage de fichier.",
+              brand: { "@type": "Brand", name: "Tagos" },
+              url: "https://tagos.io",
+              offers: [
+                {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "EUR",
+                  name: "Gratuit",
+                  availability: "https://schema.org/InStock",
+                },
+                {
+                  "@type": "Offer",
+                  price: "7",
+                  priceCurrency: "EUR",
+                  name: "Starter (300 images)",
+                  availability: "https://schema.org/PreOrder",
+                },
+                {
+                  "@type": "Offer",
+                  price: "19",
+                  priceCurrency: "EUR",
+                  name: "Pro (1500 images)",
+                  availability: "https://schema.org/PreOrder",
+                },
+              ],
+            }),
+          }}
+        />
+
+        {/* JSON-LD FAQPage (FAQ de la home) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: [
+                {
+                  "@type": "Question",
+                  name: "Stockez-vous mes images ?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Non. Les fichiers sont traités puis immédiatement supprimés.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Est-ce compatible avec mon CMS ?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Oui : WordPress, Shopify, Webflow… Copiez/collez, export CSV, ou fichier renommé.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Quelles sont les limites d’upload ?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Jusqu’à 5 Mo par image pour l’upload. Offres payantes : 300 à 1500 images par pack.",
+                  },
+                },
+              ],
+            }),
+          }}
+        />
+
         {children}
       </body>
     </html>
   );
-          }
+              }
