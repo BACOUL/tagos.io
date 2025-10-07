@@ -22,7 +22,6 @@ export default function HomePage() {
     };
   }, [previewUrl]);
 
-  // -------- Utils --------
   function isImage(file: File) {
     return /^image\/(png|jpe?g|webp|gif|bmp|tiff|svg\+xml)$/.test(file.type);
   }
@@ -33,7 +32,7 @@ export default function HomePage() {
     return null;
   }
 
-  // Limite gratuite locale (3 images / jour)
+  // Limite gratuite (3 images / jour)
   function canUseToday(limit = 3) {
     try {
       const key = 'tagos-quota';
@@ -60,7 +59,7 @@ export default function HomePage() {
     } catch {}
   }
 
-  // Slugify pour nom de fichier SEO
+  // Sanitize pour un nom de fichier SEO propre
   function slugify(input: string) {
     return input
       .toLowerCase()
@@ -71,7 +70,6 @@ export default function HomePage() {
       .slice(0, 80);
   }
 
-  // -------- Handlers --------
   async function handleFile(file: File) {
     const err = validateFile(file);
     if (err) {
@@ -94,7 +92,7 @@ export default function HomePage() {
     setFileName(file.name);
     setOriginalFile(file);
 
-    // Aperçu
+    // aperçu
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -115,11 +113,10 @@ export default function HomePage() {
       }
 
       const safe = data as GenResult;
-      setResult({
-        alt_text: String(safe.alt_text || 'Image de produit sur fond clair'),
-        tags: Array.isArray(safe.tags) ? safe.tags.map(String) : ['produit', 'photo', 'web'],
-      });
+      const alt = String(safe.alt_text || 'Image de produit sur fond clair');
+      const tags = Array.isArray(safe.tags) ? safe.tags.map((t) => String(t)) : ['produit', 'photo', 'web'];
 
+      setResult({ alt_text: alt, tags });
       bumpUse();
     } catch (e) {
       console.error(e);
@@ -149,26 +146,25 @@ export default function HomePage() {
     setDragging(false);
   }
 
-  function toast(msg: string, cls = 'bg-slate-900') {
-    const el = document.createElement('div');
-    el.textContent = msg;
-    el.className =
-      `fixed bottom-4 left-1/2 -translate-x-1/2 ${cls} text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]`;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1400);
-  }
-
+  // Toast copie
   function copy(text: string) {
     navigator.clipboard.writeText(text);
-    toast('Copié ✅');
+    const el = document.createElement('div');
+    el.textContent = 'Copié ✅';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
   }
 
   // Téléchargement du fichier renommé (même contenu, nom optimisé SEO)
   function downloadRenamed() {
     if (!originalFile || !result) return;
+
     const extMatch = (originalFile.name.match(/\.[a-zA-Z0-9]+$/) || [''])[0] || '.jpg';
     const cleanBase = slugify(result.alt_text || 'image-optimisee');
     const newName = `${cleanBase}${extMatch}`;
+
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
@@ -177,7 +173,6 @@ export default function HomePage() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
-    toast('Image renommée téléchargée ✅', 'bg-emerald-600');
   }
 
   // Export CSV (filename, alt, tags)
@@ -187,7 +182,7 @@ export default function HomePage() {
       ['filename', 'alt', 'tags'],
       [fileName ?? 'image', result.alt_text, result.tags.join('|')],
     ];
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -197,10 +192,9 @@ export default function HomePage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast('CSV exporté ✅', 'bg-emerald-600');
   }
 
-  // Capture email (sans backend) – simple toast
+  // Capture email (sans backend) – affiche un toast
   function handleLeadSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -210,26 +204,44 @@ export default function HomePage() {
       return;
     }
     e.currentTarget.reset();
-    toast('Merci ! Nous vous recontactons très vite.', 'bg-emerald-600');
+    const el = document.createElement('div');
+    el.textContent = 'Merci ! Nous vous recontactons très vite.';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
   }
 
-  // -------- UI --------
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white text-slate-900">
       {/* TOP NAV */}
       <div className="border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
         <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2" aria-label="Accueil Tagos.io">
-            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">T</div>
+          <a href="/" className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/20 grid place-items-center text-white font-bold">
+              T
+            </div>
             <span className="font-semibold">Tagos.io</span>
           </a>
           <div className="hidden sm:flex items-center gap-6 text-sm">
-            <a href="#value" className="hover:text-indigo-600">Valeur ajoutée</a>
-            <a href="#before-after" className="hover:text-indigo-600">Avant/Après</a>
-            <a href="#usecases" className="hover:text-indigo-600">Cas d’usage</a>
-            <a href="#pricing" className="hover:text-indigo-600">Tarifs</a>
-            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
-            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">Essayer</a>
+            <a href="#why" className="hover:text-indigo-600">
+              Pourquoi
+            </a>
+            <a href="#before-after" className="hover:text-indigo-600">
+              Avant/Après
+            </a>
+            <a href="#usecases" className="hover:text-indigo-600">
+              Cas d’usage
+            </a>
+            <a href="#pricing" className="hover:text-indigo-600">
+              Tarifs
+            </a>
+            <a href="#faq" className="hover:text-indigo-600">
+              FAQ
+            </a>
+            <a href="#try" className="btn btn-primary shadow-md shadow-indigo-600/20">
+              Essayer
+            </a>
           </div>
         </nav>
       </div>
@@ -245,12 +257,16 @@ export default function HomePage() {
               Des images que Google comprend.
             </h1>
             <p className="mt-4 text-slate-600 text-lg sm:text-xl">
-              Tagos transforme vos visuels en contenu lisible par les moteurs : texte alternatif clair,
-              mots-clés pertinents et nom de fichier optimisé — en quelques secondes.
+              Tagos transforme vos visuels en contenu lisible pour les moteurs : texte alternatif clair, mots-clés
+              pertinents et nom de fichier optimisé — en quelques secondes.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">🚀 Optimiser mes images</a>
-              <a href="#how" className="btn w-full sm:w-auto">Comment ça marche</a>
+              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">
+                🚀 Optimiser mes images
+              </a>
+              <a href="#how" className="btn w-full sm:w-auto">
+                Comment ça marche
+              </a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
           </div>
@@ -260,7 +276,7 @@ export default function HomePage() {
             <div className="text-sm mb-2">
               <span className="font-semibold">Nom fichier :</span>{' '}
               <span className="text-slate-700 line-through decoration-rose-400 decoration-2">IMG_1023.jpg</span>{' '}
-              <span aria-hidden className="mx-1">→</span>
+              <span className="mx-1">→</span>
               <span className="text-slate-800 font-medium">bague-or-rose-diamant-femme.jpg</span>
             </div>
             <div className="text-sm">
@@ -268,8 +284,10 @@ export default function HomePage() {
               <span className="text-slate-700">Bague en or rose sertie d’un diamant pour femme sur fond neutre</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {['bague', 'or-rose', 'diamant', 'femme', 'bijoux'].map((t) => (
-                <span key={t} className="chip">{t}</span>
+              {['bague', 'or-rose', 'diamant', 'femme', 'bijoux'].map((t, i) => (
+                <span key={i} className="chip">
+                  {t}
+                </span>
               ))}
             </div>
             <div className="mt-4 text-xs text-slate-500">Résultat prêt à indexer et accessible</div>
@@ -277,26 +295,32 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* BANDEAU CONFIANCE */}
+      {/* STRIP CONFIANCE — sans logos */}
       <section className="bg-white/60 border-y border-slate-200">
         <div className="mx-auto max-w-6xl px-4 py-6">
           <div className="grid sm:grid-cols-3 gap-6 text-sm text-slate-700">
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">✓</span>
+              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+                ✓
+              </span>
               <div>
                 <div className="font-medium">Confidentialité</div>
                 <div className="text-xs text-slate-500">Aucune image conservée</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">⚙</span>
+              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
+                ⚙
+              </span>
               <div>
                 <div className="font-medium">Compatible CMS</div>
                 <div className="text-xs text-slate-500">WordPress • Shopify • Webflow • PrestaShop</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">★</span>
+              <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+                ★
+              </span>
               <div>
                 <div className="font-medium">Qualité</div>
                 <div className="text-xs text-slate-500">ALT concis, mots-clés pertinents</div>
@@ -306,28 +330,28 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* VALEUR AJOUTÉE */}
-      <section id="value" className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Ce que Tagos change concrètement</h2>
+      {/* POURQUOI */}
+      <section id="why" className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="text-2xl font-semibold mb-6 text-center">Pourquoi vos images n’apparaissent pas sur Google ?</h2>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Visibilité immédiate</div>
-            Chaque image obtient un nom explicite, un ALT clair et des mots-clés cohérents — vos visuels deviennent “compréhensibles”.
+            <div className="text-base font-medium mb-1">Images “muettes”</div>
+            Sans ALT, nom clair ni mots-clés, une image est invisible pour les moteurs de recherche.
           </div>
           <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Standardisation rapide</div>
-            Gagnez des heures : finis les IMG_3456.jpg, toute votre médiathèque suit une logique SEO propre.
+            <div className="text-base font-medium mb-1">Accessibilité oubliée</div>
+            Les lecteurs d’écran ne peuvent pas décrire vos visuels sans texte alternatif.
           </div>
           <div className="card p-5 shadow-md hover:shadow-lg transition">
-            <div className="text-base font-medium mb-1">Accessibilité améliorée</div>
-            Des descriptions utiles pour tous, et des pages qui respectent mieux les bonnes pratiques d’accessibilité.
+            <div className="text-base font-medium mb-1">Temps perdu</div>
+            Écrire tout à la main est long et rarement fait. Tagos l’automatise proprement.
           </div>
         </div>
       </section>
 
-      {/* AVANT / APRÈS (visuel) */}
+      {/* AVANT / APRÈS visuel démo */}
       <section id="before-after" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Avant / Après : impact visible</h2>
+        <h2 className="text-2xl font-semibold mb-6 text-center">Avant / Après : impact immédiat</h2>
         <div className="grid sm:grid-cols-2 gap-6 text-sm">
           <div className="card p-5 shadow-md">
             <div className="text-slate-500 text-xs mb-2">Avant</div>
@@ -341,10 +365,14 @@ export default function HomePage() {
             <div className="text-slate-500 text-xs mb-2">Après Tagos</div>
             <div className="rounded-xl border border-slate-200 p-4 bg-white">
               <div className="h-40 rounded-md bg-slate-100 grid place-items-center text-slate-500">Image</div>
-              <div className="mt-3 text-xs text-slate-600"><b>ALT :</b> Chaise design en bois clair pour salle à manger</div>
+              <div className="mt-3 text-xs text-slate-600">
+                <b>ALT :</b> Chaise design en bois clair pour salle à manger
+              </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {['chaise', 'bois-clair', 'design', 'salle-a-manger', 'mobilier'].map((t) => (
-                  <span key={t} className="chip">{t}</span>
+                {['chaise', 'bois-clair', 'design', 'salle-a-manger', 'mobilier'].map((t, i) => (
+                  <span key={i} className="chip">
+                    {t}
+                  </span>
                 ))}
               </div>
               <div className="mt-2 text-[11px] text-slate-500">chaise-design-bois-clair-salle-a-manger.jpg</div>
@@ -359,7 +387,8 @@ export default function HomePage() {
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           <div className="card p-5 shadow-md hover:shadow-lg transition">
             <div className="text-base font-medium mb-1">E-commerce</div>
-            Catégories, fiches produit, variations — normalisez vos visuels pour la recherche d’images et Google Shopping.
+            Catégories, fiches produit, variations — normalisez vos visuels pour la recherche d’images et Google
+            Shopping.
           </div>
           <div className="card p-5 shadow-md hover:shadow-lg transition">
             <div className="text-base font-medium mb-1">Immobilier</div>
@@ -367,12 +396,12 @@ export default function HomePage() {
           </div>
           <div className="card p-5 shadow-md hover:shadow-lg transition">
             <div className="text-base font-medium mb-1">Blogs & Médias</div>
-            Illustrations, tutoriels, comparatifs — chaque image devient une porte d’entrée de trafic.
+            Illustrations, tutoriels, comparatifs — chaque image devient une entrée de trafic potentiel.
           </div>
         </div>
       </section>
 
-      {/* OUTIL */}
+      {/* OUTIL (essai) */}
       <section id="try" className="mx-auto max-w-6xl px-4 py-14 border-t border-slate-200">
         <h2 className="text-2xl font-semibold mb-5 text-center">Essayez maintenant</h2>
 
@@ -405,15 +434,12 @@ export default function HomePage() {
 
             {previewUrl && (
               <div className="w-full sm:w-auto">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="aperçu"
                   className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow"
                 />
-                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">
-                  {fileName}
-                </p>
+                <p className="mt-2 text-[11px] text-slate-500 text-center truncate max-w-[11rem]">{fileName}</p>
               </div>
             )}
           </div>
@@ -429,7 +455,7 @@ export default function HomePage() {
             role="status"
             aria-live="polite"
           >
-            <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin" />
+            <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
             Génération en cours…
             <span className="sr-only">Veuillez patienter, génération en cours</span>
           </div>
@@ -447,14 +473,22 @@ export default function HomePage() {
               <strong>ALT :</strong> {result.alt_text}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {result.tags.map((tag) => (
-                <span key={tag} className="chip">{tag}</span>
+              {result.tags.map((tag, i) => (
+                <span key={i} className="chip">
+                  {tag}
+                </span>
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
-              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les mots-clés</button>
-              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
+              <button onClick={() => copy(result.alt_text)} className="btn">
+                Copier l’ALT
+              </button>
+              <button onClick={() => copy(result.tags.join(', '))} className="btn">
+                Copier les mots-clés
+              </button>
+              <button onClick={downloadCSV} className="btn">
+                Exporter en CSV
+              </button>
               <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">
                 Télécharger l’image renommée
               </button>
@@ -471,11 +505,15 @@ export default function HomePage() {
         <h2 className="text-2xl font-semibold mb-6 text-center">Ils ont amélioré la visibilité de leurs images</h2>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
           <div className="card p-5 shadow-md">
-            <div className="text-slate-700">“On a normalisé 800 photos produits en une journée. Le gain de temps est fou.”</div>
+            <div className="text-slate-700">
+              “On a normalisé 800 photos produits en une journée. Le gain de temps est fou.”
+            </div>
             <div className="mt-3 text-xs text-slate-500">— Marine, E-commerce</div>
           </div>
           <div className="card p-5 shadow-md">
-            <div className="text-slate-700">“Les ALT sont propres, courts, et nos pages passent mieux en accessibilité.”</div>
+            <div className="text-slate-700">
+              “Les ALT sont propres, courts, et nos pages passent mieux en accessibilité.”
+            </div>
             <div className="mt-3 text-xs text-slate-500">— Karim, Agence Web</div>
           </div>
           <div className="card p-5 shadow-md">
@@ -490,16 +528,14 @@ export default function HomePage() {
         <h2 className="text-2xl font-semibold mb-6 text-center">3 étapes pour rendre vos images visibles</h2>
         <ol className="grid sm:grid-cols-3 gap-6 text-sm">
           <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">1</div>
-            Téléversez vos images (JPG, PNG, WEBP).
+            <div className="text-2xl mb-1">1</div>Téléversez vos images (JPG, PNG, WEBP).
           </li>
           <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">2</div>
-            Un texte alternatif clair, des mots-clés et un nom de fichier optimisé sont générés.
+            <div className="text-2xl mb-1">2</div>Un texte alternatif clair, des mots-clés et un nom de fichier optimisé
+            sont générés.
           </li>
           <li className="card p-5 shadow-sm">
-            <div className="text-2xl mb-1">3</div>
-            Copiez, exportez en CSV ou téléchargez l’image renommée.
+            <div className="text-2xl mb-1">3</div>Copiez, exportez en CSV ou téléchargez l’image renommée.
           </li>
         </ol>
       </section>
@@ -517,7 +553,9 @@ export default function HomePage() {
               <li>• Export CSV</li>
               <li>• Image renommée</li>
             </ul>
-            <a href="#try" className="btn btn-primary mt-6 inline-block">Essayer</a>
+            <a href="#try" className="btn btn-primary mt-6 inline-block">
+              Essayer
+            </a>
           </div>
 
           <div className="card p-6 shadow-lg border-indigo-200">
@@ -532,7 +570,7 @@ export default function HomePage() {
               <li>• Import / export CSV</li>
             </ul>
             <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20pr%C3%A9venir"
+              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir"
               className="btn mt-6 inline-block"
             >
               Me prévenir
@@ -550,10 +588,7 @@ export default function HomePage() {
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20pr%C3%A9venir"
-              className="btn mt-6 inline-block"
-            >
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">
               Me prévenir
             </a>
           </div>
@@ -579,7 +614,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* NEWSLETTER */}
+      {/* CAPTURE EMAIL */}
       <section id="newsletter" className="mx-auto max-w-4xl px-4 py-12">
         <div className="card p-6 shadow-md bg-gradient-to-br from-indigo-50 to-white">
           <h3 className="text-lg font-semibold">Recevoir les nouveautés & accès API</h3>
@@ -595,7 +630,9 @@ export default function HomePage() {
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
               aria-label="Votre email"
             />
-            <button type="submit" className="btn btn-primary">Me tenir au courant</button>
+            <button type="submit" className="btn btn-primary">
+              Me tenir au courant
+            </button>
           </form>
           <p className="text-[11px] text-slate-500 mt-2">
             En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription à tout moment.
@@ -631,13 +668,21 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <p>© 2025 Tagos.io — Tous droits réservés.</p>
           <div className="flex gap-3">
-            <a href="/privacy" className="hover:text-slate-700">Confidentialité</a>
-            <a href="/legal" className="hover:text-slate-700">Mentions légales</a>
-            <a href="/terms" className="hover:text-slate-700">Conditions</a>
-            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">Contact</a>
+            <a href="/privacy" className="hover:text-slate-700">
+              Confidentialité
+            </a>
+            <a href="/legal" className="hover:text-slate-700">
+              Mentions légales
+            </a>
+            <a href="/terms" className="hover:text-slate-700">
+              Conditions
+            </a>
+            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">
+              Contact
+            </a>
           </div>
         </div>
       </footer>
     </main>
   );
-      }
+}
