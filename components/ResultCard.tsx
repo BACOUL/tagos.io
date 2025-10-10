@@ -13,6 +13,9 @@ export type SeoResult = {
   sitemapSnippet: string;
 };
 
+// Alias pour compatibilité avec UploadClient.tsx
+export type ProcessResult = SeoResult;
+
 type Props = {
   /** Image source locale (URL.createObjectURL) pour l’aperçu */
   previewUrl: string | null;
@@ -32,7 +35,7 @@ type Props = {
 };
 
 /* -------- Composant -------- */
-export default function ResultsCard({
+export default function ResultCard({
   previewUrl,
   originalFile,
   originalName,
@@ -44,7 +47,6 @@ export default function ResultsCard({
 
   function toast(msg: string) {
     if (onToast) return onToast(msg);
-    // fallback minimal
     const el = document.createElement('div');
     el.textContent = msg;
     el.className =
@@ -105,6 +107,7 @@ export default function ResultsCard({
    */
   async function downloadSeoPack() {
     try {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore - tentative d’import si lib présente
       const JSZip = (await import('jszip')).default as any;
       const zip = new JSZip();
@@ -176,7 +179,6 @@ export default function ResultsCard({
           <div className="text-xs text-slate-500 mb-2">Après (Tagos)</div>
           <div className="aspect-square rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
             {previewUrl ? (
-              // On montre la même image mais on met l’accent sur le NOM SEO + métadonnées
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={previewUrl}
@@ -276,4 +278,4 @@ export default function ResultsCard({
       </p>
     </div>
   );
-                  }
+}
