@@ -13,36 +13,44 @@ export type SeoResult = {
   sitemapSnippet: string;
 };
 
-// Alias pour compatibilité avec UploadClient.tsx
+// Alias pour compat avec anciens imports
 export type ProcessResult = SeoResult;
 
-type Props = {
-  /** Image source locale (URL.createObjectURL) pour l’aperçu */
-  previewUrl: string | null;
-  /** Fichier d’origine pour pouvoir re-télécharger sous le nouveau nom */
-  originalFile: File | null;
+/* ---- Props ----
+   On accepte AU CHOIX:
+   - { data: SeoResult }    (nouveau)
+   - { r: SeoResult }       (ancien usage dans UploadClient.tsx)
+*/
+type PropsBase = {
+  /** Aperçu local (URL.createObjectURL) */
+  previewUrl?: string | null;
+  /** Fichier d’origine pour re-télécharger avec le nouveau nom */
+  originalFile?: File | null;
   /** Nom d’origine (pour CSV/affichage) */
-  originalName: string | null;
+  originalName?: string | null;
 
-  /** Données renvoyées par /api/process */
-  data: SeoResult;
-
-  /** Appelé quand l’utilisateur clique “Comment utiliser ?” */
-  onOpenHelp: () => void;
-
-  /** Optionnel : callback toasts du parent, sinon fallback local */
+  /** Ouvre le panneau d’aide */
+  onOpenHelp?: () => void;
+  /** Optionnel : toasts parent, sinon fallback local */
   onToast?: (msg: string) => void;
 };
 
-/* -------- Composant -------- */
-export default function ResultCard({
-  previewUrl,
-  originalFile,
-  originalName,
-  data,
-  onOpenHelp,
-  onToast,
-}: Props) {
+type Props =
+  | (PropsBase & { data: SeoResult; r?: never })
+  | (PropsBase & { r: SeoResult; data?: never });
+
+export default function ResultCard(props: Props) {
+  const {
+    previewUrl = null,
+    originalFile = null,
+    originalName = null,
+    onOpenHelp,
+    onToast,
+  } = props;
+
+  // Supporte data OU r
+  const data: SeoResult = 'data' in props ? props.data : props.r;
+
   const keywordsStr = data.keywords.join(', ');
 
   function toast(msg: string) {
@@ -65,7 +73,10 @@ export default function ResultCard({
       toast("Aucune image à télécharger.");
       return;
     }
-    const newName = data.filename || (originalName ? originalName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+    const newName =
+      data.filename ||
+      (originalName ? originalName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
@@ -78,7 +89,7 @@ export default function ResultCard({
 
   async function downloadCsv() {
     const rows = [
-      ['original_name','filename','alt','keywords','title','caption'],
+      ['original_name', 'filename', 'alt', 'keywords', 'title', 'caption'],
       [
         originalName ?? 'image',
         data.filename,
@@ -88,12 +99,16 @@ export default function ResultCard({
         data.caption,
       ],
     ];
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-export') + '.csv';
+    a.download =
+      (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-export') +
+      '.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -102,8 +117,7 @@ export default function ResultCard({
 
   /**
    * “Télécharger pack SEO”
-   * - Essaie un import dynamique de `jszip` si présent dans le projet (plus tard).
-   * - Sinon, affiche un toast d’info.
+   * - Essaie d’importer `jszip` si présent (sinon toast informatif).
    */
   async function downloadSeoPack() {
     try {
@@ -130,13 +144,17 @@ export default function ResultCard({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-pack') + '.zip';
+      a.download =
+        (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-pack') +
+        '.zip';
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch {
-      toast("Pack bientôt dispo (ZIP). Copiez/collez les éléments ci-dessous pour l’instant.");
+      toast(
+        'Pack bientôt dispo (ZIP). Copiez/collez les éléments ci-dessous pour l’instant.'
+      );
     }
   }
 
@@ -147,7 +165,10 @@ export default function ResultCard({
         <div className="text-sm text-slate-500">
           Résultats prêts à intégrer dans votre CMS
         </div>
-        <button onClick={onOpenHelp} className="text-sm underline underline-offset-2 hover:text-indigo-700">
+        <button
+          onClick={onOpenHelp || (() => {})}
+          className="text-sm underline underline-offset-2 hover:text-indigo-700"
+        >
           Comment utiliser ?
         </button>
       </div>
@@ -199,7 +220,10 @@ export default function ResultCard({
 
       {/* Boutons principaux */}
       <div className="mt-5 flex flex-wrap gap-2">
-        <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">
+        <button
+          onClick={downloadRenamed}
+          className="btn btn-primary shadow-md shadow-indigo-600/20"
+        >
           Télécharger l’image optimisée
         </button>
         <button onClick={downloadSeoPack} className="btn">
@@ -214,26 +238,44 @@ export default function ResultCard({
       <div className="mt-6 grid gap-4">
         <div>
           <div className="text-sm font-medium mb-1">Texte ALT</div>
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">{data.alt}</div>
-          <div className="mt-2"><button onClick={() => copy(data.alt)} className="btn">Copier l’ALT</button></div>
+          <div className="text-sm text-slate-700 whitespace-pre-wrap">
+            {data.alt}
+          </div>
+          <div className="mt-2">
+            <button onClick={() => copy(data.alt)} className="btn">
+              Copier l’ALT
+            </button>
+          </div>
         </div>
 
         <div>
           <div className="text-sm font-medium mb-1">Mots-clés</div>
           <div className="text-sm text-slate-700">{keywordsStr}</div>
-          <div className="mt-2"><button onClick={() => copy(keywordsStr)} className="btn">Copier les mots-clés</button></div>
+          <div className="mt-2">
+            <button onClick={() => copy(keywordsStr)} className="btn">
+              Copier les mots-clés
+            </button>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="card p-4">
             <div className="text-sm font-medium mb-1">Titre</div>
             <div className="text-sm text-slate-700">{data.title}</div>
-            <div className="mt-2"><button onClick={() => copy(data.title)} className="btn">Copier le titre</button></div>
+            <div className="mt-2">
+              <button onClick={() => copy(data.title)} className="btn">
+                Copier le titre
+              </button>
+            </div>
           </div>
           <div className="card p-4">
             <div className="text-sm font-medium mb-1">Légende</div>
             <div className="text-sm text-slate-700">{data.caption}</div>
-            <div className="mt-2"><button onClick={() => copy(data.caption)} className="btn">Copier la légende</button></div>
+            <div className="mt-2">
+              <button onClick={() => copy(data.caption)} className="btn">
+                Copier la légende
+              </button>
+            </div>
           </div>
         </div>
 
@@ -241,7 +283,9 @@ export default function ResultCard({
           <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
           <div className="text-sm text-slate-700">{data.filename}</div>
           <div className="mt-2">
-            <button onClick={() => copy(data.filename)} className="btn">Copier le nom</button>
+            <button onClick={() => copy(data.filename)} className="btn">
+              Copier le nom
+            </button>
           </div>
         </div>
 
@@ -253,7 +297,10 @@ export default function ResultCard({
             value={JSON.stringify(data.structuredData, null, 2)}
           />
           <div className="mt-2">
-            <button onClick={() => copy(JSON.stringify(data.structuredData, null, 2))} className="btn">
+            <button
+              onClick={() => copy(JSON.stringify(data.structuredData, null, 2))}
+              className="btn"
+            >
               Copier JSON-LD
             </button>
           </div>
@@ -267,7 +314,9 @@ export default function ResultCard({
             value={data.sitemapSnippet}
           />
           <div className="mt-2">
-            <button onClick={() => copy(data.sitemapSnippet)} className="btn">Copier XML</button>
+            <button onClick={() => copy(data.sitemapSnippet)} className="btn">
+              Copier XML
+            </button>
           </div>
         </div>
       </div>
@@ -278,4 +327,4 @@ export default function ResultCard({
       </p>
     </div>
   );
-}
+      }
