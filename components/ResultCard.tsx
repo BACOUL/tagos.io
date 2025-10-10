@@ -13,31 +13,32 @@ export type SeoResult = {
   sitemapSnippet: string;
 };
 
-// Alias pour compat avec anciens imports
+// Alias compat
 export type ProcessResult = SeoResult;
 
 /* ---- Props ----
    On accepte AU CHOIX:
    - { data: SeoResult }    (nouveau)
-   - { r: SeoResult }       (ancien usage dans UploadClient.tsx)
+   - { r: SeoResult }       (ancien usage)
 */
 type PropsBase = {
-  /** Aperçu local (URL.createObjectURL) */
   previewUrl?: string | null;
-  /** Fichier d’origine pour re-télécharger avec le nouveau nom */
   originalFile?: File | null;
-  /** Nom d’origine (pour CSV/affichage) */
   originalName?: string | null;
-
-  /** Ouvre le panneau d’aide */
   onOpenHelp?: () => void;
-  /** Optionnel : toasts parent, sinon fallback local */
   onToast?: (msg: string) => void;
 };
 
 type Props =
   | (PropsBase & { data: SeoResult; r?: never })
   | (PropsBase & { r: SeoResult; data?: never });
+
+function hasProp<K extends string>(
+  obj: unknown,
+  key: K
+): obj is Record<K, unknown> {
+  return typeof obj === 'object' && obj !== null && key in obj;
+}
 
 export default function ResultCard(props: Props) {
   const {
@@ -48,8 +49,13 @@ export default function ResultCard(props: Props) {
     onToast,
   } = props;
 
-  // Supporte data OU r
-  const data: SeoResult = 'data' in props ? props.data : props.r;
+  // Garde robuste: assure qu'on a data OU r
+  if (!hasProp(props, 'data') && !hasProp(props, 'r')) {
+    throw new Error('ResultCard: prop manquante — fournissez `data` ou `r`.');
+  }
+  const data: SeoResult = (hasProp(props, 'data')
+    ? (props.data as SeoResult)
+    : (props.r as SeoResult));
 
   const keywordsStr = data.keywords.join(', ');
 
@@ -70,7 +76,7 @@ export default function ResultCard(props: Props) {
 
   async function downloadRenamed() {
     if (!originalFile) {
-      toast("Aucune image à télécharger.");
+      toast('Aucune image à télécharger.');
       return;
     }
     const newName =
@@ -115,18 +121,13 @@ export default function ResultCard(props: Props) {
     URL.revokeObjectURL(url);
   }
 
-  /**
-   * “Télécharger pack SEO”
-   * - Essaie d’importer `jszip` si présent (sinon toast informatif).
-   */
   async function downloadSeoPack() {
     try {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore - tentative d’import si lib présente
+      // @ts-ignore
       const JSZip = (await import('jszip')).default as any;
       const zip = new JSZip();
 
-      // Fichiers texte
       zip.file('ALT.txt', data.alt);
       zip.file('KEYWORDS.txt', keywordsStr);
       zip.file('TITLE.txt', data.title);
@@ -134,7 +135,6 @@ export default function ResultCard(props: Props) {
       zip.file('structuredData.json', JSON.stringify(data.structuredData, null, 2));
       zip.file('sitemap-image.xml', data.sitemapSnippet);
 
-      // Image d’origine sous nom SEO (si dispo)
       if (originalFile) {
         const arrayBuf = await originalFile.arrayBuffer();
         zip.file(data.filename || (originalName || 'image.jpg'), arrayBuf);
@@ -175,7 +175,7 @@ export default function ResultCard(props: Props) {
 
       {/* Avant / Après (live) */}
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-slate-200 p-3 bg-white">
+        <div className="rounded-xl border border-slate-2 00 p-3 bg-white">
           <div className="text-xs text-slate-500 mb-2">Avant</div>
           <div className="aspect-square rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
             {previewUrl ? (
