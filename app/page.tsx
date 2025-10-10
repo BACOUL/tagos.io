@@ -8,6 +8,8 @@ type ProcessAPI = {
   mime: string;
   size: number;
   originalName: string;
+  remaining?: number | null;
+  resetAt?: string | null;
   result: {
     alt: string;
     keywords: string[];
@@ -18,8 +20,9 @@ type ProcessAPI = {
     sitemapSnippet: string;
   };
 };
-type ProcessError = { error: string };
+type ProcessError = { error: string; remaining?: number; resetAt?: string };
 
+/* ---------- Page ---------- */
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -33,10 +36,24 @@ export default function HomePage() {
   // Résultats 6 livrables
   const [processData, setProcessData] = useState<ProcessAPI['result'] | null>(null);
 
+  // Quota UX
+  const MAX_DAILY = 3;
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [resetAt, setResetAt] = useState<string | null>(null);
+
   // NEW: menu mobile
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ---------- Helpers ---------- */
+  function formatResetAt(iso: string | null) {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " UTC";
+    } catch { return null; }
+  }
 
   /* ---------- Nettoyage URL d’aperçu ---------- */
   useEffect(() => {
@@ -77,7 +94,7 @@ export default function HomePage() {
     return null;
   }
 
-  /* ---------- Limite gratuite (3 images / jour) côté client (affichage) ---------- */
+  /* ---------- Limite gratuite locale (UX) ---------- */
   function canUseToday(limit = 3) {
     try {
       const key = 'tagos-quota';
@@ -103,6 +120,17 @@ export default function HomePage() {
       localStorage.setItem(key, JSON.stringify(next));
     } catch {}
   }
+
+  /* ---------- Lecture initiale du quota (placeholder, corrigé après upload) ---------- */
+  useEffect(() => {
+    fetch('/api/quota')
+      .then(r => r.json())
+      .then(d => {
+        if (typeof d?.remaining === 'number') setRemaining(d.remaining);
+        if (typeof d?.resetAt === 'string') setResetAt(d.resetAt);
+      })
+      .catch(() => {});
+  }, []);
 
   /* ---------- Toast copie ---------- */
   function copy(text: string) {
@@ -163,7 +191,7 @@ export default function HomePage() {
       return;
     }
 
-    if (!canUseToday(3)) {
+    if (!canUseToday(MAX_DAILY)) {
       setErrorMsg('Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.');
       setProcessData(null);
       return;
@@ -186,15 +214,29 @@ export default function HomePage() {
       formData.append('file', file);
 
       const res = await fetch('/api/process', { method: 'POST', body: formData });
-      const data = (await res.json()) as ProcessAPI | ProcessError;
+      const data = await res.json();
 
-      if (!res.ok || 'error' in data) {
-        setErrorMsg(('error' in data && data.error) || 'Erreur temporaire. Merci de réessayer.');
+      // Quota dépassé
+      if (res.status === 429) {
+        setErrorMsg((data?.error as string) || 'Quota dépassé : 3 images gratuites par jour.');
+        if (typeof data?.remaining === 'number') setRemaining(data.remaining);
+        if (typeof data?.resetAt === 'string') setResetAt(data.resetAt);
         setProcessData(null);
         return;
       }
 
-      setProcessData((data as ProcessAPI).result);
+      // Erreur générique
+      if (!res.ok || data?.error) {
+        setErrorMsg((data?.error as string) || 'Erreur temporaire. Merci de réessayer.');
+        setProcessData(null);
+        return;
+      }
+
+      // Succès
+      const okData = data as ProcessAPI;
+      setProcessData(okData.result);
+      if (typeof okData.remaining === 'number') setRemaining(okData.remaining);
+      if (typeof okData.resetAt === 'string') setResetAt(okData.resetAt);
       bumpUse();
     } catch (e) {
       console.error(e);
@@ -264,7 +306,7 @@ export default function HomePage() {
             <span className="font-semibold">Tagos.io</span>
           </a>
 
-          {/* Desktop */}
+        {/* Desktop */}
           <div className="hidden sm:flex items-center gap-6 text-sm">
             <a href="#problem" className="hover:text-indigo-600">Problèmes</a>
             <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
@@ -442,7 +484,13 @@ export default function HomePage() {
             <div className="text-center sm:text-left">
               <div className="font-medium text-slate-900">Glissez une image ici</div>
               <div className="text-xs text-slate-500 mt-1">ou</div>
-              <button onClick={() => inputRef.current?.click()} className="btn mt-2" type="button">
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="btn mt-2"
+                type="button"
+                disabled={busy || remaining === 0}
+                title={remaining === 0 ? "Plus de crédits aujourd’hui" : "Choisir un fichier"}
+              >
                 Choisir un fichier
               </button>
             </div>
@@ -452,7 +500,7 @@ export default function HomePage() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleInputChange}
-              disabled={busy}
+              disabled={busy || remaining === 0}
               className="hidden"
             />
 
@@ -476,6 +524,31 @@ export default function HomePage() {
           <p className="mt-3 text-xs text-slate-500 text-center">
             JPG, PNG, WEBP — 5&nbsp;Mo max. Les fichiers ne sont pas conservés.
           </p>
+
+          {/* Bandeau crédits restants */}
+          {remaining !== null && (
+            <div className="mt-4 mx-auto max-w-3xl rounded-xl border bg-white p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Crédits restants aujourd’hui</div>
+                <div className="text-slate-600">
+                  {MAX_DAILY - Math.max(0, remaining)} / {MAX_DAILY} utilisés
+                </div>
+              </div>
+              <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div
+                  className="h-2 bg-indigo-600 transition-all"
+                  style={{
+                    width: `${Math.min(100, ((MAX_DAILY - Math.max(0, remaining)) / MAX_DAILY) * 100)}%`,
+                  }}
+                />
+              </div>
+              {resetAt && (
+                <div className="mt-2 text-xs text-slate-500">
+                  Réinitialisation à {formatResetAt(resetAt)}.
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {busy && (
@@ -705,4 +778,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-}
+                                             }
