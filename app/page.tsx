@@ -22,7 +22,6 @@ type ProcessAPI = {
 };
 type ProcessError = { error: string; remaining?: number; resetAt?: string };
 
-/* ---------- Page ---------- */
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -41,9 +40,8 @@ export default function HomePage() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [resetAt, setResetAt] = useState<string | null>(null);
 
-  // NEW: menu mobile
+  // Menu mobile
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* ---------- Helpers ---------- */
@@ -51,8 +49,10 @@ export default function HomePage() {
     if (!iso) return null;
     try {
       const d = new Date(iso);
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " UTC";
-    } catch { return null; }
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC';
+    } catch {
+      return null;
+    }
   }
 
   /* ---------- Nettoyage URL d’aperçu ---------- */
@@ -124,8 +124,8 @@ export default function HomePage() {
   /* ---------- Lecture initiale du quota (placeholder, corrigé après upload) ---------- */
   useEffect(() => {
     fetch('/api/quota')
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         if (typeof d?.remaining === 'number') setRemaining(d.remaining);
         if (typeof d?.resetAt === 'string') setResetAt(d.resetAt);
       })
@@ -137,7 +137,8 @@ export default function HomePage() {
     navigator.clipboard.writeText(text);
     const el = document.createElement('div');
     el.textContent = 'Copié ✅';
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   }
@@ -145,7 +146,8 @@ export default function HomePage() {
   /* ---------- Télécharger le même binaire avec le nom SEO renvoyé par l’API ---------- */
   function downloadRenamed() {
     if (!originalFile || !processData) return;
-    const newName = processData.filename || (fileName ? fileName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+    const newName =
+      processData.filename || (fileName ? fileName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
@@ -160,7 +162,7 @@ export default function HomePage() {
   function downloadCSV() {
     if (!processData) return;
     const rows = [
-      ['original_name','filename','alt','keywords','title','caption'],
+      ['original_name', 'filename', 'alt', 'keywords', 'title', 'caption'],
       [
         fileName ?? 'image',
         processData.filename,
@@ -170,7 +172,9 @@ export default function HomePage() {
         processData.caption,
       ],
     ];
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -192,7 +196,9 @@ export default function HomePage() {
     }
 
     if (!canUseToday(MAX_DAILY)) {
-      setErrorMsg('Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.');
+      setErrorMsg(
+        'Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.'
+      );
       setProcessData(null);
       return;
     }
@@ -278,7 +284,8 @@ export default function HomePage() {
     e.currentTarget.reset();
     const el = document.createElement('div');
     el.textContent = 'Merci ! Nous vous recontactons très vite.';
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1500);
   }
@@ -302,19 +309,33 @@ export default function HomePage() {
       <div className="sticky top-0 z-50 border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/25 grid place-items-center text-white font-bold">T</div>
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/25 grid place-items-center text-white font-bold">
+              T
+            </div>
             <span className="font-semibold">Tagos.io</span>
           </a>
 
-        {/* Desktop */}
+          {/* Desktop */}
           <div className="hidden sm:flex items-center gap-6 text-sm">
-            <a href="#problem" className="hover:text-indigo-600">Problèmes</a>
-            <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
-            <a href="#try" className="hover:text-indigo-600">Essayer</a>
-            <a href="#plans" className="hover:text-indigo-600">Offres</a>
-            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
-            <a href="/login" className="hover:text-indigo-600">Se connecter</a>
-            <a href="/signup" className="btn btn-primary shadow-md shadow-indigo-600/20">Créer un compte</a>
+            <a href="#problem" className="hover:text-indigo-600">
+              Problèmes
+            </a>
+            <a href="#value" className="hover:text-indigo-600">
+              Ce que vous gagnez
+            </a>
+            <a href="#try" className="hover:text-indigo-600">
+              Essayer
+            </a>
+            <a href="#plans" className="hover:text-indigo-600">
+              Offres
+            </a>
+            <a href="#faq" className="hover:text-indigo-600">
+              FAQ
+            </a>
+
+            {/* Masqués tant que l'auth n'est pas prête */}
+            {/* <a href="/login" className="hover:text-indigo-600">Se connecter</a>
+            <a href="/signup" className="btn btn-primary shadow-md shadow-indigo-600/20">Créer un compte</a> */}
           </div>
 
           {/* Mobile hamburger */}
@@ -328,11 +349,11 @@ export default function HomePage() {
           >
             {!mobileOpen ? (
               <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             ) : (
               <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             )}
           </button>
@@ -366,18 +387,28 @@ export default function HomePage() {
               aria-label="Fermer le menu"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </button>
           </div>
           <nav className="p-4 flex flex-col gap-3 text-sm">
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#problem')}>Problèmes</button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>Ce que vous gagnez</button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>Essayer</button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>Offres</button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>FAQ</button>
-            <a href="/login" className="mt-3 hover:text-indigo-600">Se connecter</a>
-            <a href="/signup" className="btn btn-primary mt-1">Créer un compte</a>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#problem')}>
+              Problèmes
+            </button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>
+              Ce que vous gagnez
+            </button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>
+              Essayer
+            </button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>
+              Offres
+            </button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>
+              FAQ
+            </button>
+            {/* <a href="/login" className="mt-3 hover:text-indigo-600">Se connecter</a>
+            <a href="/signup" className="btn btn-primary mt-1">Créer un compte</a> */}
           </nav>
         </div>
       </div>
@@ -397,7 +428,9 @@ export default function HomePage() {
               mots-clés pertinents, nom de fichier propre, données structurées & extrait sitemap — prêts à intégrer.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">🚀 Optimiser une image</a>
+              <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">
+                🚀 Optimiser une image
+              </a>
               <a href="#value" className="btn w-full sm:w-auto">Voir tout ce que vous gagnez</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
@@ -474,6 +507,7 @@ export default function HomePage() {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
+          aria-label="Zone de dépôt d’image pour générer ALT, titre, légende et sitemap"
           className={[
             'rounded-2xl border-2 border-dashed p-8 transition shadow-sm mx-auto max-w-3xl',
             dragging ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-300 bg-white',
@@ -489,7 +523,7 @@ export default function HomePage() {
                 className="btn mt-2"
                 type="button"
                 disabled={busy || remaining === 0}
-                title={remaining === 0 ? "Plus de crédits aujourd’hui" : "Choisir un fichier"}
+                title={remaining === 0 ? 'Plus de crédits aujourd’hui' : 'Choisir un fichier'}
               >
                 Choisir un fichier
               </button>
@@ -538,21 +572,26 @@ export default function HomePage() {
                 <div
                   className="h-2 bg-indigo-600 transition-all"
                   style={{
-                    width: `${Math.min(100, ((MAX_DAILY - Math.max(0, remaining)) / MAX_DAILY) * 100)}%`,
+                    width: `${Math.min(
+                      100,
+                      ((MAX_DAILY - Math.max(0, remaining)) / MAX_DAILY) * 100
+                    )}%`,
                   }}
                 />
               </div>
               {resetAt && (
-                <div className="mt-2 text-xs text-slate-500">
-                  Réinitialisation à {formatResetAt(resetAt)}.
-                </div>
+                <div className="mt-2 text-xs text-slate-500">Réinitialisation à {formatResetAt(resetAt)}.</div>
               )}
             </div>
           )}
         </div>
 
         {busy && (
-          <div className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl" role="status" aria-live="polite">
+          <div
+            className="mt-5 card p-5 text-sm flex items-center gap-3 mx-auto max-w-3xl"
+            role="status"
+            aria-live="polite"
+          >
             <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
             Génération en cours…
             <span className="sr-only">Veuillez patienter, génération en cours</span>
@@ -571,25 +610,41 @@ export default function HomePage() {
               <div>
                 <div className="text-sm font-medium mb-1">Texte ALT</div>
                 <div className="text-sm text-slate-700 whitespace-pre-wrap">{processData.alt}</div>
-                <div className="mt-2"><button onClick={() => copy(processData.alt)} className="btn">Copier l’ALT</button></div>
+                <div className="mt-2">
+                  <button onClick={() => copy(processData.alt)} className="btn">
+                    Copier l’ALT
+                  </button>
+                </div>
               </div>
 
               <div>
                 <div className="text-sm font-medium mb-1">Mots-clés</div>
                 <div className="text-sm text-slate-700">{processData.keywords.join(', ')}</div>
-                <div className="mt-2"><button onClick={() => copy(processData.keywords.join(', '))} className="btn">Copier les mots-clés</button></div>
+                <div className="mt-2">
+                  <button onClick={() => copy(processData.keywords.join(', '))} className="btn">
+                    Copier les mots-clés
+                  </button>
+                </div>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="card p-4">
                   <div className="text-sm font-medium mb-1">Titre</div>
                   <div className="text-sm text-slate-700">{processData.title}</div>
-                  <div className="mt-2"><button onClick={() => copy(processData.title)} className="btn">Copier le titre</button></div>
+                  <div className="mt-2">
+                    <button onClick={() => copy(processData.title)} className="btn">
+                      Copier le titre
+                    </button>
+                  </div>
                 </div>
                 <div className="card p-4">
                   <div className="text-sm font-medium mb-1">Légende</div>
                   <div className="text-sm text-slate-700">{processData.caption}</div>
-                  <div className="mt-2"><button onClick={() => copy(processData.caption)} className="btn">Copier la légende</button></div>
+                  <div className="mt-2">
+                    <button onClick={() => copy(processData.caption)} className="btn">
+                      Copier la légende
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -597,8 +652,12 @@ export default function HomePage() {
                 <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
                 <div className="text-sm text-slate-700">{processData.filename}</div>
                 <div className="mt-2">
-                  <button onClick={() => copy(processData.filename)} className="btn">Copier le nom</button>
-                  <button onClick={downloadRenamed} className="btn btn-primary ml-2">Télécharger l’image renommée</button>
+                  <button onClick={() => copy(processData.filename)} className="btn">
+                    Copier le nom
+                  </button>
+                  <button onClick={downloadRenamed} className="btn btn-primary ml-2">
+                    Télécharger l’image renommée
+                  </button>
                 </div>
               </div>
 
@@ -610,7 +669,10 @@ export default function HomePage() {
                   value={JSON.stringify(processData.structuredData, null, 2)}
                 />
                 <div className="mt-2">
-                  <button onClick={() => copy(JSON.stringify(processData.structuredData, null, 2))} className="btn">
+                  <button
+                    onClick={() => copy(JSON.stringify(processData.structuredData, null, 2))}
+                    className="btn"
+                  >
                     Copier JSON-LD
                   </button>
                 </div>
@@ -624,12 +686,16 @@ export default function HomePage() {
                   value={processData.sitemapSnippet}
                 />
                 <div className="mt-2">
-                  <button onClick={() => copy(processData.sitemapSnippet)} className="btn">Copier XML</button>
+                  <button onClick={() => copy(processData.sitemapSnippet)} className="btn">
+                    Copier XML
+                  </button>
                 </div>
               </div>
 
               <div className="mt-1">
-                <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
+                <button onClick={downloadCSV} className="btn">
+                  Exporter en CSV
+                </button>
               </div>
             </div>
 
@@ -653,43 +719,66 @@ export default function HomePage() {
               <li>• Export CSV</li>
               <li>• Image renommée</li>
             </ul>
-            <a href="#try" className="btn btn-primary mt-6 inline-block">Essayer</a>
+            <a href="#try" className="btn btn-primary mt-6 inline-block">
+              Essayer
+            </a>
           </div>
 
           <div data-reveal className="card p-6 shadow-lg border-indigo-200">
             <div className="text-lg font-semibold">Starter</div>
             <div className="mt-1 text-slate-500 text-sm">Pour petits sites</div>
-            <div className="mt-4 text-3xl font-extrabold">7 € <span className="text-base font-normal text-slate-500">/ 300 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              7 € <span className="text-base font-normal text-slate-500">/ 300 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 300 images</li>
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Import / export CSV</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20pr%C3%A9venir"
+              className="btn mt-6 inline-block"
+            >
+              Me prévenir
+            </a>
           </div>
 
           <div data-reveal className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Pro</div>
             <div className="mt-1 text-slate-500 text-sm">Pour e-commerce</div>
-            <div className="mt-4 text-3xl font-extrabold">19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              19 € <span className="text-base font-normal text-slate-500">/ 1500 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• Jusqu’à 1 500 images</li>
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20prévenir" className="btn mt-6 inline-block">Me prévenir</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20pr%C3%A9venir"
+              className="btn mt-6 inline-block"
+            >
+              Me prévenir
+            </a>
           </div>
 
           <div data-reveal className="card p-6 shadow-md">
             <div className="text-lg font-semibold">Agence</div>
             <div className="mt-1 text-slate-500 text-sm">Pour gros volumes</div>
-            <div className="mt-4 text-3xl font-extrabold">49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span></div>
+            <div className="mt-4 text-3xl font-extrabold">
+              49 € <span className="text-base font-normal text-slate-500">/ 5000 images</span>
+            </div>
             <ul className="mt-4 text-sm space-y-2">
               <li>• 5 000 images</li>
               <li>• API & intégrations</li>
               <li>• SLA & support dédié</li>
             </ul>
-            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">Contacter</a>
+            <a
+              href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact"
+              className="btn mt-6 inline-block"
+            >
+              Contacter
+            </a>
           </div>
         </div>
       </section>
@@ -704,7 +793,10 @@ export default function HomePage() {
                 Proposez Tagos à vos clients : normalisation des médiathèques, conformité accessibilité, indexation
                 accélérée. API et intégrations à venir.
               </p>
-              <a href="mailto:contact@tagos.io?subject=Programme%20Partenaires%20Tagos" className="btn mt-4">
+              <a
+                href="mailto:contact@tagos.io?subject=Programme%20Partenaires%20Tagos"
+                className="btn mt-4"
+              >
                 Rejoindre le programme
               </a>
             </div>
@@ -725,7 +817,9 @@ export default function HomePage() {
       <section id="newsletter" className="mx-auto max-w-4xl px-4 pb-14">
         <div data-reveal className="card p-6 shadow-md">
           <h3 className="text-lg font-semibold">Recevoir les nouveautés & accès API</h3>
-          <p className="text-sm text-slate-600 mt-1">Soyez averti dès l’ouverture des packs payants et des intégrations CMS.</p>
+          <p className="text-sm text-slate-600 mt-1">
+            Soyez averti dès l’ouverture des packs payants et des intégrations CMS.
+          </p>
           <form className="mt-4 flex flex-col sm:flex-row gap-3" onSubmit={handleLeadSubmit}>
             <input
               name="email"
@@ -735,9 +829,13 @@ export default function HomePage() {
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
               aria-label="Votre email"
             />
-            <button type="submit" className="btn btn-primary">Me tenir au courant</button>
+            <button type="submit" className="btn btn-primary">
+              Me tenir au courant
+            </button>
           </form>
-          <p className="text-[11px] text-slate-500 mt-2">En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription possible à tout moment.</p>
+          <p className="text-[11px] text-slate-500 mt-2">
+            En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription possible à tout moment.
+          </p>
         </div>
       </section>
 
@@ -769,13 +867,21 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <p>© 2025 Tagos.io — Tous droits réservés.</p>
           <div className="flex gap-3">
-            <a href="/privacy" className="hover:text-slate-700">Confidentialité</a>
-            <a href="/legal" className="hover:text-slate-700">Mentions légales</a>
-            <a href="/terms" className="hover:text-slate-700">Conditions</a>
-            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">Contact</a>
+            <a href="/privacy" className="hover:text-slate-700">
+              Confidentialité
+            </a>
+            <a href="/legal" className="hover:text-slate-700">
+              Mentions légales
+            </a>
+            <a href="/terms" className="hover:text-slate-700">
+              Conditions
+            </a>
+            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">
+              Contact
+            </a>
           </div>
         </div>
       </footer>
     </main>
   );
-                                             }
+       }
