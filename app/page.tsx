@@ -2,30 +2,50 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 
-type GenResult = { alt_text: string; tags: string[] };
+/* ---------- Types pour /api/process ---------- */
+type ProcessAPI = {
+  ok: true;
+  mime: string;
+  size: number;
+  originalName: string;
+  result: {
+    alt: string;
+    keywords: string[];
+    filename: string;     // nom SEO (slug + extension)
+    title: string;
+    caption: string;
+    structuredData: any;  // JSON-LD ImageObject
+    sitemapSnippet: string;
+  };
+};
+type ProcessError = { error: string };
 
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<GenResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Aperçu + contexte fichier
   const [dragging, setDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
+
+  // Résultats 6 livrables
+  const [processData, setProcessData] = useState<ProcessAPI['result'] | null>(null);
 
   // NEW: menu mobile
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Nettoyage URL d’aperçu
+  /* ---------- Nettoyage URL d’aperçu ---------- */
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
-  // Révélations au scroll (fade/slide)
+  /* ---------- Révélations au scroll (fade/slide) ---------- */
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>('[data-reveal]');
     const io = new IntersectionObserver(
@@ -47,17 +67,17 @@ export default function HomePage() {
     return () => io.disconnect();
   }, []);
 
+  /* ---------- Validation fichiers (alignée backend) ---------- */
   function isImage(file: File) {
-    return /^image\/(png|jpe?g|webp|gif|bmp|tiff|svg\+xml)$/.test(file.type);
+    return /^(image\/jpeg|image\/png|image\/webp)$/.test(file.type);
   }
-
   function validateFile(file: File): string | null {
     if (!isImage(file)) return 'Format non supporté. Utilisez JPG, PNG ou WEBP.';
     if (file.size > 5 * 1024 * 1024) return 'Fichier trop volumineux (max 5 Mo).';
     return null;
   }
 
-  // Limite gratuite (3 images / jour)
+  /* ---------- Limite gratuite (3 images / jour) côté client (affichage) ---------- */
   function canUseToday(limit = 3) {
     try {
       const key = 'tagos-quota';
@@ -84,35 +104,76 @@ export default function HomePage() {
     } catch {}
   }
 
-  // Slug pour nom de fichier
-  function slugify(input: string) {
-    return input
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 80);
+  /* ---------- Toast copie ---------- */
+  function copy(text: string) {
+    navigator.clipboard.writeText(text);
+    const el = document.createElement('div');
+    el.textContent = 'Copié ✅';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
   }
 
+  /* ---------- Télécharger le même binaire avec le nom SEO renvoyé par l’API ---------- */
+  function downloadRenamed() {
+    if (!originalFile || !processData) return;
+    const newName = processData.filename || (fileName ? fileName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+    const url = URL.createObjectURL(originalFile);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = newName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  /* ---------- Export CSV (6 livrables principaux) ---------- */
+  function downloadCSV() {
+    if (!processData) return;
+    const rows = [
+      ['original_name','filename','alt','keywords','title','caption'],
+      [
+        fileName ?? 'image',
+        processData.filename,
+        processData.alt,
+        processData.keywords.join(', '),
+        processData.title,
+        processData.caption,
+      ],
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (fileName ? fileName.replace(/\.[^.]+$/, '') : 'tagos-export') + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /* ---------- Upload -> /api/process (6 livrables) ---------- */
   async function handleFile(file: File) {
     const err = validateFile(file);
     if (err) {
       setErrorMsg(err);
-      setResult(null);
+      setProcessData(null);
       return;
     }
 
     if (!canUseToday(3)) {
       setErrorMsg('Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.');
-      setResult(null);
+      setProcessData(null);
       return;
     }
 
     setBusy(true);
-    setResult(null);
     setErrorMsg(null);
     setFileName(file.name);
     setOriginalFile(file);
+    setProcessData(null);
 
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
@@ -120,28 +181,25 @@ export default function HomePage() {
       return url;
     });
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const res = await fetch('/api/generate', { method: 'POST', body: formData });
-      const data = (await res.json()) as GenResult | { error?: string };
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (!res.ok || (data as { error?: string })?.error) {
-        setErrorMsg((data as { error?: string })?.error ?? 'Erreur temporaire. Merci de réessayer.');
-        setResult(null);
+      const res = await fetch('/api/process', { method: 'POST', body: formData });
+      const data = (await res.json()) as ProcessAPI | ProcessError;
+
+      if (!res.ok || 'error' in data) {
+        setErrorMsg(('error' in data && data.error) || 'Erreur temporaire. Merci de réessayer.');
+        setProcessData(null);
         return;
       }
 
-      const safe = data as GenResult;
-      const alt = String(safe.alt_text || 'Image de produit sur fond clair');
-      const tags = Array.isArray(safe.tags) ? safe.tags.map((t) => String(t)) : ['produit', 'photo', 'web'];
-      setResult({ alt_text: alt, tags });
+      setProcessData((data as ProcessAPI).result);
       bumpUse();
     } catch (e) {
       console.error(e);
       setErrorMsg('Erreur réseau. Vérifiez votre connexion puis réessayez.');
-      setResult(null);
+      setProcessData(null);
     } finally {
       setBusy(false);
     }
@@ -164,51 +222,6 @@ export default function HomePage() {
   }
   function onDragLeave() {
     setDragging(false);
-  }
-
-  // Toast copie
-  function copy(text: string) {
-    navigator.clipboard.writeText(text);
-    const el = document.createElement('div');
-    el.textContent = 'Copié ✅';
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1200);
-  }
-
-  // Télécharger le même binaire avec un nom SEO
-  function downloadRenamed() {
-    if (!originalFile || !result) return;
-    const extMatch = (originalFile.name.match(/\.[a-zA-Z0-9]+$/) || [''])[0] || '.jpg';
-    const cleanBase = slugify(result.alt_text || 'image-optimisee');
-    const newName = `${cleanBase}${extMatch}`;
-    const url = URL.createObjectURL(originalFile);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = newName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-
-  // CSV
-  function downloadCSV() {
-    if (!result) return;
-    const rows = [
-      ['filename', 'alt', 'tags'],
-      [fileName ?? 'image', result.alt_text, result.tags.join('|')],
-    ];
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (fileName ? fileName.replace(/\.[^.]+$/, '') : 'alt-tags') + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   }
 
   // Lead (sans backend)
@@ -283,7 +296,7 @@ export default function HomePage() {
           </button>
         </nav>
 
-        {/* Overlay mobile (plus sombre) */}
+        {/* Overlay mobile */}
         <div
           className={[
             'sm:hidden fixed inset-0 bg-slate-900/60 transition-opacity',
@@ -293,7 +306,7 @@ export default function HomePage() {
           onClick={() => setMobileOpen(false)}
         />
 
-        {/* Drawer mobile : fond BLANC plein, non transparent */}
+        {/* Drawer mobile */}
         <div
           id="mobile-menu"
           className={[
@@ -437,7 +450,7 @@ export default function HomePage() {
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleInputChange}
               disabled={busy}
               className="hidden"
@@ -445,6 +458,7 @@ export default function HomePage() {
 
             {previewUrl && (
               <div className="w-full sm:w-auto">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="aperçu"
@@ -478,45 +492,40 @@ export default function HomePage() {
           </div>
         )}
 
-        {result && !errorMsg && (
+        {processData && !errorMsg && (
           <div className="mt-6 card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
-            <div className="text-sm leading-relaxed">
-              <strong>ALT :</strong> {result.alt_text}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {result.tags.map((tag, i) => (
-                <span key={i} className="chip">{tag}</span>
-              ))}
-            </div>
+            <div className="grid gap-4">
+              <div>
+                <div className="text-sm font-medium mb-1">Texte ALT</div>
+                <div className="text-sm text-slate-700 whitespace-pre-wrap">{processData.alt}</div>
+                <div className="mt-2"><button onClick={() => copy(processData.alt)} className="btn">Copier l’ALT</button></div>
+              </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => copy(result.alt_text)} className="btn">Copier l’ALT</button>
-              <button onClick={() => copy(result.tags.join(', '))} className="btn">Copier les mots-clés</button>
-              <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
-              <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">
-                Télécharger l’image renommée
-              </button>
-            </div>
+              <div>
+                <div className="text-sm font-medium mb-1">Mots-clés</div>
+                <div className="text-sm text-slate-700">{processData.keywords.join(', ')}</div>
+                <div className="mt-2"><button onClick={() => copy(processData.keywords.join(', '))} className="btn">Copier les mots-clés</button></div>
+              </div>
 
-            {/* Livrables complémentaires */}
-            <div className="mt-6 grid gap-4">
-              <div className="card p-4">
-                <div className="text-sm font-medium mb-1">Title (info-bulle)</div>
-                <div className="text-sm text-slate-700">{result.alt_text}</div>
-                <div className="mt-2">
-                  <button onClick={() => copy(result.alt_text)} className="btn">Copier le title</button>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="card p-4">
+                  <div className="text-sm font-medium mb-1">Titre</div>
+                  <div className="text-sm text-slate-700">{processData.title}</div>
+                  <div className="mt-2"><button onClick={() => copy(processData.title)} className="btn">Copier le titre</button></div>
+                </div>
+                <div className="card p-4">
+                  <div className="text-sm font-medium mb-1">Légende</div>
+                  <div className="text-sm text-slate-700">{processData.caption}</div>
+                  <div className="mt-2"><button onClick={() => copy(processData.caption)} className="btn">Copier la légende</button></div>
                 </div>
               </div>
 
               <div className="card p-4">
-                <div className="text-sm font-medium mb-1">Légende / contexte</div>
-                <div className="text-sm text-slate-700">
-                  {result.alt_text}. {result.tags.slice(0,3).join(', ')}.
-                </div>
+                <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
+                <div className="text-sm text-slate-700">{processData.filename}</div>
                 <div className="mt-2">
-                  <button onClick={() => copy(`${result.alt_text}. ${result.tags.slice(0,3).join(', ')}.`)} className="btn">
-                    Copier la légende
-                  </button>
+                  <button onClick={() => copy(processData.filename)} className="btn">Copier le nom</button>
+                  <button onClick={downloadRenamed} className="btn btn-primary ml-2">Télécharger l’image renommée</button>
                 </div>
               </div>
 
@@ -525,30 +534,10 @@ export default function HomePage() {
                 <textarea
                   readOnly
                   className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
-                  value={JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "ImageObject",
-                    "name": result.alt_text,
-                    "description": result.alt_text,
-                    "keywords": result.tags.join(", "),
-                    "contentUrl": "https://www.exemple.com/chemin/vers/mon-image.jpg"
-                  }, null, 2)}
+                  value={JSON.stringify(processData.structuredData, null, 2)}
                 />
                 <div className="mt-2">
-                  <button
-                    onClick={() => {
-                      const val = JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "ImageObject",
-                        "name": result.alt_text,
-                        "description": result.alt_text,
-                        "keywords": result.tags.join(", "),
-                        "contentUrl": "https://www.exemple.com/chemin/vers/mon-image.jpg"
-                      }, null, 2);
-                      copy(val);
-                    }}
-                    className="btn"
-                  >
+                  <button onClick={() => copy(JSON.stringify(processData.structuredData, null, 2))} className="btn">
                     Copier JSON-LD
                   </button>
                 </div>
@@ -559,30 +548,15 @@ export default function HomePage() {
                 <textarea
                   readOnly
                   className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
-                  value={`<url>
-  <loc>https://www.exemple.com/page-qui-contient-l-image</loc>
-  <image:image>
-    <image:loc>https://www.exemple.com/chemin/vers/mon-image.jpg</image:loc>
-    <image:caption>${result.alt_text}</image:caption>
-    <image:title>${result.alt_text}</image:title>
-  </image:image>
-</url>`}
+                  value={processData.sitemapSnippet}
                 />
                 <div className="mt-2">
-                  <button
-                    onClick={() => copy(`<url>
-  <loc>https://www.exemple.com/page-qui-contient-l-image</loc>
-  <image:image>
-    <image:loc>https://www.exemple.com/chemin/vers/mon-image.jpg</image:loc>
-    <image:caption>${result.alt_text}</image:caption>
-    <image:title>${result.alt_text}</image:title>
-  </image:image>
-</url>`)}
-                    className="btn"
-                  >
-                    Copier XML
-                  </button>
+                  <button onClick={() => copy(processData.sitemapSnippet)} className="btn">Copier XML</button>
                 </div>
+              </div>
+
+              <div className="mt-1">
+                <button onClick={downloadCSV} className="btn">Exporter en CSV</button>
               </div>
             </div>
 
@@ -731,4 +705,4 @@ export default function HomePage() {
       </footer>
     </main>
   );
-  }
+}
