@@ -1,5 +1,6 @@
 // app/api/process/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { clientIdFromRequest, checkAndIncrementDaily } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,7 +113,21 @@ function getExtFromMime(mime: string): string {
 /* --- Handler --- */
 export async function POST(req: NextRequest) {
   try {
-    // 1) Lecture de la FormData (fichier) — pas de stockage, traitement en mémoire
+    /* 1) Quota 3/jour par IP */
+    const clientId = clientIdFromRequest(req.headers);
+    const quota = await checkAndIncrementDaily(clientId);
+    if (!quota.ok) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Quota dépassé : 3 images gratuites par jour.",
+          remaining: quota.remaining,
+          resetAt: quota.resetAt,
+        }),
+        { status: 429, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+
+    /* 2) Lecture du fichier (FormData) — pas de stockage */
     const formData = await req.formData();
     const file = formData.get("file");
 
@@ -132,7 +147,7 @@ export async function POST(req: NextRequest) {
     // Lecture en mémoire (cohérent avec “fichiers non stockés”)
     await file.arrayBuffer();
 
-    // 2) Heuristiques basées sur le nom de fichier
+    /* 3) Heuristiques basées sur le nom de fichier */
     const originalName = (file as any).name || "image";
     const baseNoExt = originalName.replace(/\.[^.]+$/, "");
     const ext = getExtFromMime(mime);
@@ -147,12 +162,14 @@ export async function POST(req: NextRequest) {
     const structuredData = buildJSONLD({ alt, title, keywords });
     const sitemapSnippet = buildSitemapImageSnippet({ filename, title, caption });
 
-    // 3) Réponse : les 6 livrables
+    /* 4) Réponse : les 6 livrables + info quota restante */
     return ok({
       ok: true,
       mime,
       size,
       originalName,
+      remaining: quota.remaining,  // <— utile si tu veux afficher “X/3 restants”
+      resetAt: quota.resetAt,
       result: {
         alt,
         keywords,
@@ -162,10 +179,9 @@ export async function POST(req: NextRequest) {
         structuredData,
         sitemapSnippet,
       },
-      // OPTION plus tard: renvoyer aussi le binaire renommé (Blob/stream) si tu veux un download direct
     });
   } catch (e: any) {
     console.error("API /api/process error:", e);
     return bad("Erreur interne.", 500);
   }
-}
+    }
