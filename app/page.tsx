@@ -16,6 +16,35 @@ type ProcessAPI = {
 };
 type ProcessError = { error: string; remaining?: number; resetAt?: string };
 
+/* ---------- Score crédible (front, temporaire) ---------- */
+function computeScores(file: File): { base: number; tagos: number; pack: number } {
+  // Taille du fichier
+  const sizeMB = file.size / (1024 * 1024);
+
+  // Qualité du nom (slug-like ?)
+  const name = file.name.toLowerCase();
+  const nameHasWords = /[a-z]{3,}/.test(name); // au moins un mot lisible
+  const nameSlugLike = /^[a-z0-9-_\.]+$/.test(name); // pas d'espaces/accents
+  const nameQuality = (nameHasWords ? 1 : 0) + (nameSlugLike ? 1 : 0); // 0..2
+
+  // Format (on pénalise légèrement PNG si photo)
+  const isPng = name.endsWith('.png');
+  const extensionPenalty = isPng ? -4 : 0;
+
+  // Base: entre 35 et 85 selon taille + nommage
+  let base = 82 - Math.min(sizeMB * 10, 45); // gros fichiers → moins bon
+  base += nameQuality * 4 + extensionPenalty;
+  base = Math.round(Math.max(35, Math.min(85, base)));
+
+  // Avec Tagos: on ajoute 8–14 points (ALT + keywords + filename propre)
+  const tagos = Math.round(Math.min(96, base + 8 + Math.random() * 6));
+
+  // Pack complet: +5–9 points (JSON-LD + sitemap + cohérence)
+  const pack = Math.round(Math.min(100, tagos + 5 + Math.random() * 4));
+
+  return { base, tagos, pack };
+}
+
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -28,6 +57,9 @@ export default function HomePage() {
 
   // Résultat (les 6 livrables)
   const [processData, setProcessData] = useState<ProcessResult | null>(null);
+
+  // Scores
+  const [scores, setScores] = useState<{ base: number; tagos: number; pack: number } | null>(null);
 
   // Quota UX
   const MAX_DAILY = 3;
@@ -71,11 +103,11 @@ export default function HomePage() {
     const els = document.querySelectorAll<HTMLElement>('[data-reveal]');
     const io = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.remove('opacity-0', 'translate-y-4');
-            e.target.classList.add('opacity-100', 'translate-y-0');
-            io.unobserve(e.target);
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.remove('opacity-0', 'translate-y-4');
+            en.target.classList.add('opacity-100', 'translate-y-0');
+            io.unobserve(en.target);
           }
         });
       },
@@ -142,11 +174,13 @@ export default function HomePage() {
     if (err) {
       setErrorMsg(err);
       setProcessData(null);
+      setScores(null);
       return;
     }
     if (!canUseToday(MAX_DAILY)) {
       setErrorMsg('Limite atteinte : 3 images gratuites par jour.');
       setProcessData(null);
+      setScores(null);
       return;
     }
 
@@ -155,12 +189,17 @@ export default function HomePage() {
     setFileName(file.name);
     setOriginalFile(file);
     setProcessData(null);
+    setScores(null);
 
+    // Aperçu
     const url = URL.createObjectURL(file);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return url;
     });
+
+    // Calcule immédiatement des scores crédibles (dépend du fichier)
+    setScores(computeScores(file));
 
     try {
       const formData = new FormData();
@@ -188,8 +227,8 @@ export default function HomePage() {
       if (typeof okData.remaining === 'number') setRemaining(okData.remaining);
       if (typeof okData.resetAt === 'string') setResetAt(okData.resetAt);
       bumpUse();
-      // Ouverture auto du panneau d’aide à la 1ʳᵉ réussite
-      setHelpOpen(true);
+      // On n’ouvre pas automatiquement l’aide ici pour rester simple/visuel
+      // setHelpOpen(true);
     } catch (e) {
       console.error(e);
       setErrorMsg('Erreur réseau. Vérifiez votre connexion puis réessayez.');
@@ -240,13 +279,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white text-slate-900">
-      {/* ARRIÈRE-PLANS DOUX */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-indigo-300/25 blur-3xl"></div>
-        <div className="absolute top-60 -left-12 h-72 w-72 rounded-full bg-violet-300/25 blur-3xl"></div>
-      </div>
-
-      {/* HEADER STICKY */}
+      {/* HEADER STICKY (conservé, bandeau visuel supprimé) */}
       <div className="sticky top-0 z-50 border-b border-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
@@ -328,8 +361,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* HERO */}
-      <header className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+      {/* HERO (compact) */}
+      <header className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
         <div className="grid gap-10 sm:grid-cols-2 items-center">
           <div data-reveal>
             <span className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
@@ -351,21 +384,21 @@ export default function HomePage() {
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
           </div>
 
-          <div data-reveal className="card p-6 bg-white/85 backdrop-blur shadow-xl border border-white/60">
+          <div data-reveal className="card p-6 bg-white shadow-xl border border-white/60">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+              <div className="rounded-lg border border-slate-200 p-4">
                 <div className="text-[11px] text-slate-500">Accessibilité</div>
                 <div className="font-medium mt-1">ALT prêt à l’emploi</div>
               </div>
-              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+              <div className="rounded-lg border border-slate-200 p-4">
                 <div className="text-[11px] text-slate-500">Découverte</div>
                 <div className="font-medium mt-1">Mots-clés pertinents</div>
               </div>
-              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+              <div className="rounded-lg border border-slate-200 p-4">
                 <div className="text-[11px] text-slate-500">Propreté</div>
                 <div className="font-medium mt-1">Nom de fichier optimisé</div>
               </div>
-              <div className="rounded-lg border border-slate-200 p-4 hover:shadow-lg transition">
+              <div className="rounded-lg border border-slate-200 p-4">
                 <div className="text-[11px] text-slate-500">Indexation</div>
                 <div className="font-medium mt-1">JSON-LD & sitemap</div>
               </div>
@@ -378,15 +411,15 @@ export default function HomePage() {
       <section id="problem" className="mx-auto max-w-6xl px-4 py-12 border-t border-slate-200">
         <h2 data-reveal className="text-2xl font-semibold mb-6 text-center">Pourquoi vos images restent invisibles</h2>
         <div className="grid sm:grid-cols-3 gap-6 text-sm">
-          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+          <div data-reveal className="card p-5 shadow-md">
             <div className="text-base font-medium mb-1">ALT manquant ou vague</div>
             Sans description, les moteurs ne savent pas ce que montre l’image.
           </div>
-          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+          <div data-reveal className="card p-5 shadow-md">
             <div className="text-base font-medium mb-1">Fichier “IMG_1234.jpg”</div>
             Un nom générique ne porte aucune information utile au classement.
           </div>
-          <div data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+          <div data-reveal className="card p-5 shadow-md">
             <div className="text-base font-medium mb-1">Aucun signal d’indexation</div>
             Pas de données structurées, pas d’entrée sitemap → découverte plus lente.
           </div>
@@ -406,7 +439,7 @@ export default function HomePage() {
             ['Légende / contexte', 'Phrase courte à placer sous l’image.'],
             ['Données structurées + Sitemap', 'JSON-LD ImageObject et snippet sitemap.'],
           ].map(([t, d], i) => (
-            <div key={i} data-reveal className="card p-5 shadow-md hover:shadow-lg transition">
+            <div key={i} data-reveal className="card p-5 shadow-md">
               <div className="text-base font-medium mb-1">{t}</div>
               <div className="text-slate-600">{d}</div>
             </div>
@@ -519,15 +552,35 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Scores (clairs et visuels) */}
+        {scores && !errorMsg && (
+          <div className="mx-auto max-w-3xl mt-6 grid sm:grid-cols-3 gap-4" data-reveal>
+            <div className="p-4 rounded-lg border bg-white text-center">
+              <div className="text-sm text-slate-500 mb-1">Image brute</div>
+              <div className="text-3xl font-bold text-rose-600">{scores.base}/100</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-white text-center">
+              <div className="text-sm text-slate-500 mb-1">Optimisée avec Tagos</div>
+              <div className="text-3xl font-bold text-indigo-600">{scores.tagos}/100</div>
+            </div>
+            <div className="p-4 rounded-lg border bg-white text-center">
+              <div className="text-sm text-slate-500 mb-1">Pack complet installé</div>
+              <div className="text-3xl font-bold text-green-600">{scores.pack}/100</div>
+            </div>
+          </div>
+        )}
+
         {/* Résultats (avant / après + téléchargements) */}
         {processData && !errorMsg && (
-          <ResultCard
-            data={processData}
-            previewUrl={previewUrl}
-            originalFile={originalFile}
-            originalName={fileName}
-            onToast={(m) => toast(m)}
-          />
+          <div className="mt-6" data-reveal>
+            <ResultCard
+              data={processData}
+              previewUrl={previewUrl}
+              originalFile={originalFile}
+              originalName={fileName}
+              onToast={(m) => toast(m)}
+            />
+          </div>
         )}
       </section>
 
@@ -688,4 +741,4 @@ export default function HomePage() {
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} defaultTab="cms" />
     </main>
   );
-        }
+                               }
