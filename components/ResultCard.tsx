@@ -60,7 +60,7 @@ function tokenize(s: string) {
 function jaccard(a: string[], b: string[]) {
   const A = new Set(a);
   const B = new Set(b);
-  const inter = new Set([...A].filter(x => B.has(x))).size;
+  const inter = new Set([...A].filter((x) => B.has(x))).size;
   const uni = new Set([...A, ...B]).size || 1;
   return inter / uni;
 }
@@ -127,17 +127,17 @@ function scoreIndexability(filename: string, hasJsonLd: boolean, hasSitemap: boo
 
 /** Pertinence (keywords + cohérence ALT) -> 0..100 */
 function scoreRelevance(keywords: string[], alt: string): number {
-  const cleanKw = (keywords || []).map(k => String(k || '').trim()).filter(Boolean);
+  const cleanKw = (keywords || []).map((k) => String(k || '').trim()).filter(Boolean);
   let s = 0;
 
-  const uniq = Array.from(new Set(cleanKw.map(k => k.toLowerCase())));
+  const uniq = Array.from(new Set(cleanKw.map((k) => k.toLowerCase())));
   const count = uniq.length;
 
   if (count >= 3 && count <= 8) s += 35;
   else if (count > 0) s += 15;
 
   if (count <= 1 && cleanKw.length > 1) s -= 10;
-  if (uniq.every(k => /^\d+$/.test(k))) s -= 20;
+  if (uniq.every((k) => /^\d+$/.test(k))) s -= 20;
 
   const avgLen = uniq.reduce((acc, k) => acc + k.length, 0) / Math.max(1, count);
   s += 25 * (normLenScore(avgLen, 6, 26) / 100);
@@ -189,14 +189,14 @@ export default function ResultCard(props: Props) {
 
   /* ---- 3 scénarios de score ---- */
 
-  // 1) AVANT (sans Tagos) : on part du nom original, pas d’ALT/titre/légende, pas de JSON-LD ni sitemap
+  // 1) AVANT (sans Tagos) : nom original, pas d’ALT/titre/légende, pas de JSON-LD ni sitemap
   const baseFilename = (originalName || data.filename || '').toString();
   const before_read = scoreReadability('', '', '');
   const before_ind  = scoreIndexability(baseFilename, false, false);
   const before_rel  = scoreRelevance([], '');
   const before_glob = scoreGlobal(before_read, before_ind, before_rel);
 
-  // 2) APRÈS (modifs Tagos) : on utilise les champs générés, mais sans JSON-LD ni sitemap
+  // 2) APRÈS (modifs Tagos) : champs générés, sans JSON-LD/sitemap
   const mod_read = scoreReadability(data.alt, data.title, data.caption);
   const mod_ind  = scoreIndexability(data.filename, false, false);
   const mod_rel  = scoreRelevance(data.keywords, data.alt);
@@ -248,7 +248,7 @@ export default function ResultCard(props: Props) {
       ],
     ];
     const csv = rows
-      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
       .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -298,9 +298,15 @@ export default function ResultCard(props: Props) {
 
     ctx.fillStyle = '#111827';
     ctx.font = `bold ${Math.max(22, Math.round(badgeH * 0.35))}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto`;
-    ctx.fillText(`Score (modifs Tagos) ${mod_glob}/100`, pad + Math.round(badgeH * 0.35), pad + Math.round(badgeH * 0.65));
+    ctx.fillText(
+      `Score (modifs Tagos) ${mod_glob}/100`,
+      pad + Math.round(badgeH * 0.35),
+      pad + Math.round(badgeH * 0.65)
+    );
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.95)
+    );
     if (!blob) {
       toast('Export impossible.');
       return;
@@ -316,7 +322,14 @@ export default function ResultCard(props: Props) {
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
-  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  function roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) {
     const rr = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
     ctx.moveTo(x + rr, y);
@@ -544,4 +557,4 @@ export default function ResultCard(props: Props) {
       </details>
     </div>
   );
-                       }
+}
