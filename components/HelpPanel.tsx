@@ -125,4 +125,4 @@ export default function HelpPanel(props: Props) {
       </div>
     </div>
   );
-      }
+        }
