@@ -103,7 +103,7 @@ export default function ResultCard(props: Props) {
       ],
     ];
     const csv = rows
-      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')))
       .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -147,7 +147,7 @@ export default function ResultCard(props: Props) {
 
     if (originalFile) {
       packParts.push(
-        'NOTE: Téléchargez l’image renommée via le bouton dédié “Télécharger l’image optimisée”.'
+        'NOTE: Téléchargez l’image renommée via le bouton “Télécharger l’image optimisée”.'
       );
     } else {
       packParts.push(
@@ -322,4 +322,3 @@ export default function ResultCard(props: Props) {
     </div>
   );
 }
-```0
