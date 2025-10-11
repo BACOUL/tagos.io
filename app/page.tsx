@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import ResultCard, { type ProcessResult } from '../components/ResultCard';
+import HelpPanel from '../components/HelpPanel';
 
 /* ---------- Types pour /api/process ---------- */
 type ProcessAPI = {
@@ -10,15 +12,7 @@ type ProcessAPI = {
   originalName: string;
   remaining?: number | null;
   resetAt?: string | null;
-  result: {
-    alt: string;
-    keywords: string[];
-    filename: string;     // nom SEO (slug + extension)
-    title: string;
-    caption: string;
-    structuredData: any;  // JSON-LD ImageObject
-    sitemapSnippet: string;
-  };
+  result: ProcessResult;
 };
 type ProcessError = { error: string; remaining?: number; resetAt?: string };
 
@@ -32,16 +26,18 @@ export default function HomePage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
 
-  // Résultats 6 livrables
-  const [processData, setProcessData] = useState<ProcessAPI['result'] | null>(null);
+  // Résultat (les 6 livrables)
+  const [processData, setProcessData] = useState<ProcessResult | null>(null);
 
   // Quota UX
   const MAX_DAILY = 3;
   const [remaining, setRemaining] = useState<number | null>(null);
   const [resetAt, setResetAt] = useState<string | null>(null);
 
-  // Menu mobile
+  // Menu / aide
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* ---------- Helpers ---------- */
@@ -53,6 +49,14 @@ export default function HomePage() {
     } catch {
       return null;
     }
+  }
+  function toast(msg: string) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[70]';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
   }
 
   /* ---------- Nettoyage URL d’aperçu ---------- */
@@ -121,7 +125,7 @@ export default function HomePage() {
     } catch {}
   }
 
-  /* ---------- Lecture initiale du quota (placeholder, corrigé après upload) ---------- */
+  /* ---------- Lecture initiale du quota (placeholder) ---------- */
   useEffect(() => {
     fetch('/api/quota')
       .then((r) => r.json())
@@ -132,61 +136,7 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  /* ---------- Toast copie ---------- */
-  function copy(text: string) {
-    navigator.clipboard.writeText(text);
-    const el = document.createElement('div');
-    el.textContent = 'Copié ✅';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1200);
-  }
-
-  /* ---------- Télécharger le même binaire avec le nom SEO renvoyé par l’API ---------- */
-  function downloadRenamed() {
-    if (!originalFile || !processData) return;
-    const newName =
-      processData.filename || (fileName ? fileName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
-    const url = URL.createObjectURL(originalFile);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = newName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-
-  /* ---------- Export CSV (6 livrables principaux) ---------- */
-  function downloadCSV() {
-    if (!processData) return;
-    const rows = [
-      ['original_name', 'filename', 'alt', 'keywords', 'title', 'caption'],
-      [
-        fileName ?? 'image',
-        processData.filename,
-        processData.alt,
-        processData.keywords.join(', '),
-        processData.title,
-        processData.caption,
-      ],
-    ];
-    const csv = rows
-      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (fileName ? fileName.replace(/\.[^.]+$/, '') : 'tagos-export') + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  /* ---------- Upload -> /api/process (6 livrables) ---------- */
+  /* ---------- Upload -> /api/process ---------- */
   async function handleFile(file: File) {
     const err = validateFile(file);
     if (err) {
@@ -194,11 +144,8 @@ export default function HomePage() {
       setProcessData(null);
       return;
     }
-
     if (!canUseToday(MAX_DAILY)) {
-      setErrorMsg(
-        'Limite atteinte : 3 images gratuites par jour. Passez au pack 300 pour continuer sans limite quotidienne.'
-      );
+      setErrorMsg('Limite atteinte : 3 images gratuites par jour.');
       setProcessData(null);
       return;
     }
@@ -222,7 +169,6 @@ export default function HomePage() {
       const res = await fetch('/api/process', { method: 'POST', body: formData });
       const data = await res.json();
 
-      // Quota dépassé
       if (res.status === 429) {
         setErrorMsg((data?.error as string) || 'Quota dépassé : 3 images gratuites par jour.');
         if (typeof data?.remaining === 'number') setRemaining(data.remaining);
@@ -231,19 +177,19 @@ export default function HomePage() {
         return;
       }
 
-      // Erreur générique
       if (!res.ok || data?.error) {
         setErrorMsg((data?.error as string) || 'Erreur temporaire. Merci de réessayer.');
         setProcessData(null);
         return;
       }
 
-      // Succès
       const okData = data as ProcessAPI;
       setProcessData(okData.result);
       if (typeof okData.remaining === 'number') setRemaining(okData.remaining);
       if (typeof okData.resetAt === 'string') setResetAt(okData.resetAt);
       bumpUse();
+      // Ouverture auto du panneau d’aide à la 1ʳᵉ réussite
+      setHelpOpen(true);
     } catch (e) {
       console.error(e);
       setErrorMsg('Erreur réseau. Vérifiez votre connexion puis réessayez.');
@@ -282,12 +228,7 @@ export default function HomePage() {
       return;
     }
     e.currentTarget.reset();
-    const el = document.createElement('div');
-    el.textContent = 'Merci ! Nous vous recontactons très vite.';
-    el.className =
-      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1500);
+    toast('Merci ! Nous vous recontactons très vite.');
   }
 
   // Nav mobile: scroll smooth puis fermeture
@@ -317,25 +258,11 @@ export default function HomePage() {
 
           {/* Desktop */}
           <div className="hidden sm:flex items-center gap-6 text-sm">
-            <a href="#problem" className="hover:text-indigo-600">
-              Problèmes
-            </a>
-            <a href="#value" className="hover:text-indigo-600">
-              Ce que vous gagnez
-            </a>
-            <a href="#try" className="hover:text-indigo-600">
-              Essayer
-            </a>
-            <a href="#plans" className="hover:text-indigo-600">
-              Offres
-            </a>
-            <a href="#faq" className="hover:text-indigo-600">
-              FAQ
-            </a>
-
-            {/* Masqués tant que l'auth n'est pas prête */}
-            {/* <a href="/login" className="hover:text-indigo-600">Se connecter</a>
-            <a href="/signup" className="btn btn-primary shadow-md shadow-indigo-600/20">Créer un compte</a> */}
+            <a href="#problem" className="hover:text-indigo-600">Problèmes</a>
+            <a href="#value" className="hover:text-indigo-600">Ce que vous gagnez</a>
+            <a href="#try" className="hover:text-indigo-600">Essayer</a>
+            <a href="#plans" className="hover:text-indigo-600">Offres</a>
+            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
           </div>
 
           {/* Mobile hamburger */}
@@ -349,11 +276,11 @@ export default function HomePage() {
           >
             {!mobileOpen ? (
               <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             ) : (
               <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             )}
           </button>
@@ -387,28 +314,16 @@ export default function HomePage() {
               aria-label="Fermer le menu"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" role="img" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
           <nav className="p-4 flex flex-col gap-3 text-sm">
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#problem')}>
-              Problèmes
-            </button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>
-              Ce que vous gagnez
-            </button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>
-              Essayer
-            </button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>
-              Offres
-            </button>
-            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>
-              FAQ
-            </button>
-            {/* <a href="/login" className="mt-3 hover:text-indigo-600">Se connecter</a>
-            <a href="/signup" className="btn btn-primary mt-1">Créer un compte</a> */}
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#problem')}>Problèmes</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#value')}>Ce que vous gagnez</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#try')}>Essayer</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#plans')}>Offres</button>
+            <button className="text-left hover:text-indigo-600" onClick={() => handleMobileNavClick('#faq')}>FAQ</button>
           </nav>
         </div>
       </div>
@@ -421,17 +336,17 @@ export default function HomePage() {
               Le référencement d’images, simplifié
             </span>
             <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight">
-              Faites <span className="text-indigo-600">trouver</span> vos images.
+              Vos images ne sont pas visibles.<br />
+              <span className="text-indigo-600">Tagos les rend visibles.</span>
             </h1>
             <p className="mt-4 text-slate-600 text-lg sm:text-xl">
-              Tagos transforme chaque image en contenu compris par les moteurs&nbsp;: texte alternatif clair,
-              mots-clés pertinents, nom de fichier propre, données structurées & extrait sitemap — prêts à intégrer.
+              Analyse, optimise et prouve le gain SEO de vos images — en un clic.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <a href="#try" className="btn btn-primary w-full sm:w-auto shadow-md shadow-indigo-600/20">
-                🚀 Optimiser une image
+                🚀 Analyser mon image
               </a>
-              <a href="#value" className="btn w-full sm:w-auto">Voir tout ce que vous gagnez</a>
+              <a href="#value" className="btn w-full sm:w-auto">Voir les bénéfices</a>
             </div>
             <p className="mt-3 text-xs text-slate-500">Aucune inscription • 3 images gratuites/jour • Fichiers non stockés</p>
           </div>
@@ -604,105 +519,16 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Résultats (avant / après + téléchargements) */}
         {processData && !errorMsg && (
-          <div className="mt-6 card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
-            <div className="grid gap-4">
-              <div>
-                <div className="text-sm font-medium mb-1">Texte ALT</div>
-                <div className="text-sm text-slate-700 whitespace-pre-wrap">{processData.alt}</div>
-                <div className="mt-2">
-                  <button onClick={() => copy(processData.alt)} className="btn">
-                    Copier l’ALT
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium mb-1">Mots-clés</div>
-                <div className="text-sm text-slate-700">{processData.keywords.join(', ')}</div>
-                <div className="mt-2">
-                  <button onClick={() => copy(processData.keywords.join(', '))} className="btn">
-                    Copier les mots-clés
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="card p-4">
-                  <div className="text-sm font-medium mb-1">Titre</div>
-                  <div className="text-sm text-slate-700">{processData.title}</div>
-                  <div className="mt-2">
-                    <button onClick={() => copy(processData.title)} className="btn">
-                      Copier le titre
-                    </button>
-                  </div>
-                </div>
-                <div className="card p-4">
-                  <div className="text-sm font-medium mb-1">Légende</div>
-                  <div className="text-sm text-slate-700">{processData.caption}</div>
-                  <div className="mt-2">
-                    <button onClick={() => copy(processData.caption)} className="btn">
-                      Copier la légende
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card p-4">
-                <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
-                <div className="text-sm text-slate-700">{processData.filename}</div>
-                <div className="mt-2">
-                  <button onClick={() => copy(processData.filename)} className="btn">
-                    Copier le nom
-                  </button>
-                  <button onClick={downloadRenamed} className="btn btn-primary ml-2">
-                    Télécharger l’image renommée
-                  </button>
-                </div>
-              </div>
-
-              <div className="card p-4">
-                <div className="text-sm font-medium mb-1">Données structurées (JSON-LD)</div>
-                <textarea
-                  readOnly
-                  className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
-                  value={JSON.stringify(processData.structuredData, null, 2)}
-                />
-                <div className="mt-2">
-                  <button
-                    onClick={() => copy(JSON.stringify(processData.structuredData, null, 2))}
-                    className="btn"
-                  >
-                    Copier JSON-LD
-                  </button>
-                </div>
-              </div>
-
-              <div className="card p-4">
-                <div className="text-sm font-medium mb-1">Sitemap images (XML)</div>
-                <textarea
-                  readOnly
-                  className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
-                  value={processData.sitemapSnippet}
-                />
-                <div className="mt-2">
-                  <button onClick={() => copy(processData.sitemapSnippet)} className="btn">
-                    Copier XML
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-1">
-                <button onClick={downloadCSV} className="btn">
-                  Exporter en CSV
-                </button>
-              </div>
-            </div>
-
-            <p className="mt-3 text-[12px] text-slate-500">
-              Astuce : renommez vos fichiers avec une description claire. Les CMS et Google comprennent mieux le contenu.
-            </p>
-          </div>
+          <ResultCard
+            data={processData}
+            previewUrl={previewUrl}
+            originalFile={originalFile}
+            originalName={fileName}
+            onOpenHelp={() => setHelpOpen(true)}
+            onToast={(m) => toast(m)}
+          />
         )}
       </section>
 
@@ -719,9 +545,7 @@ export default function HomePage() {
               <li>• Export CSV</li>
               <li>• Image renommée</li>
             </ul>
-            <a href="#try" className="btn btn-primary mt-6 inline-block">
-              Essayer
-            </a>
+            <a href="#try" className="btn btn-primary mt-6 inline-block">Essayer</a>
           </div>
 
           <div data-reveal className="card p-6 shadow-lg border-indigo-200">
@@ -735,10 +559,7 @@ export default function HomePage() {
               <li>• Mots-clés étendus (jusqu’à 8)</li>
               <li>• Import / export CSV</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20pr%C3%A9venir"
-              className="btn mt-6 inline-block"
-            >
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Starter%20-%20Me%20pr%C3%A9venir" className="btn mt-6 inline-block">
               Me prévenir
             </a>
           </div>
@@ -754,10 +575,7 @@ export default function HomePage() {
               <li>• Fichiers multiples & API</li>
               <li>• Support prioritaire</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20pr%C3%A9venir"
-              className="btn mt-6 inline-block"
-            >
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Pro%20-%20Me%20pr%C3%A9venir" className="btn mt-6 inline-block">
               Me prévenir
             </a>
           </div>
@@ -773,10 +591,7 @@ export default function HomePage() {
               <li>• API & intégrations</li>
               <li>• SLA & support dédié</li>
             </ul>
-            <a
-              href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact"
-              className="btn mt-6 inline-block"
-            >
+            <a href="mailto:contact@tagos.io?subject=Tagos%20Agence%20-%20Contact" className="btn mt-6 inline-block">
               Contacter
             </a>
           </div>
@@ -793,10 +608,7 @@ export default function HomePage() {
                 Proposez Tagos à vos clients : normalisation des médiathèques, conformité accessibilité, indexation
                 accélérée. API et intégrations à venir.
               </p>
-              <a
-                href="mailto:contact@tagos.io?subject=Programme%20Partenaires%20Tagos"
-                className="btn mt-4"
-              >
+              <a href="mailto:contact@tagos.io?subject=Programme%20Partenaires%20Tagos" className="btn mt-4">
                 Rejoindre le programme
               </a>
             </div>
@@ -829,9 +641,7 @@ export default function HomePage() {
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
               aria-label="Votre email"
             />
-            <button type="submit" className="btn btn-primary">
-              Me tenir au courant
-            </button>
+            <button type="submit" className="btn btn-primary">Me tenir au courant</button>
           </form>
           <p className="text-[11px] text-slate-500 mt-2">
             En vous inscrivant, vous acceptez d’être contacté au sujet de Tagos. Désinscription possible à tout moment.
@@ -867,21 +677,16 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row justify-between gap-3">
           <p>© 2025 Tagos.io — Tous droits réservés.</p>
           <div className="flex gap-3">
-            <a href="/privacy" className="hover:text-slate-700">
-              Confidentialité
-            </a>
-            <a href="/legal" className="hover:text-slate-700">
-              Mentions légales
-            </a>
-            <a href="/terms" className="hover:text-slate-700">
-              Conditions
-            </a>
-            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">
-              Contact
-            </a>
+            <a href="/privacy" className="hover:text-slate-700">Confidentialité</a>
+            <a href="/legal" className="hover:text-slate-700">Mentions légales</a>
+            <a href="/terms" className="hover:text-slate-700">Conditions</a>
+            <a href="mailto:contact@tagos.io" className="hover:text-slate-700">Contact</a>
           </div>
         </div>
       </footer>
+
+      {/* Help modal */}
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} defaultTab="cms" />
     </main>
   );
-       }
+  }
