@@ -1,294 +1,133 @@
+
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 
-type Props = {
+type HelpPanelProps = {
   open: boolean;
   onClose: () => void;
-  defaultTab?: 'cms' | 'pack';
+  defaultTab?: 'cms' | 'zip';
 };
 
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="px-1.5 py-0.5 rounded border bg-slate-50 text-slate-700 text-[11px]">
-      {children}
-    </kbd>
-  );
-}
-
-export default function HelpPanel({ open, onClose, defaultTab = 'cms' }: Props) {
-  const [tab, setTab] = React.useState<'cms' | 'pack'>(defaultTab);
-
-  useEffect(() => {
-    if (open) setTab(defaultTab);
-  }, [open, defaultTab]);
-
-  // Échappe avec Échap
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
+function Modal({ open, onClose, children, title }: { open: boolean; onClose: () => void; children: React.ReactNode; title: string }) {
   if (!open) return null;
-
   return (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-slate-900/60 z-[70]"
-        aria-hidden="true"
-        onClick={onClose}
-      />
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="help-title"
-        className="fixed inset-0 z-[71] grid place-items-center p-4"
-      >
-        <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200">
-          {/* Header */}
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 id="help-title" className="text-sm font-semibold">
-              Comment utiliser vos livrables Tagos
-            </h2>
-            <button
-              onClick={onClose}
-              aria-label="Fermer"
-              className="rounded-md p-2 hover:bg-slate-100"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="px-4 pt-3">
-            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 text-sm">
-              <button
-                className={`px-3 py-1.5 rounded-md ${tab === 'cms' ? 'bg-white shadow border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}
-                onClick={() => setTab('cms')}
-              >
-                Intégrer dans mon CMS
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-md ${tab === 'pack' ? 'bg-white shadow border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}
-                onClick={() => setTab('pack')}
-              >
-                Pack SEO (ZIP)
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-4">
-            {tab === 'cms' ? <CmsHowTo /> : <PackHowTo />}
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-slate-200 flex items-center justify-end gap-2">
-            <button onClick={onClose} className="btn">Fermer</button>
-          </div>
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-title"
+    >
+      <div className="absolute inset-0 bg-slate-900/60" onClick={onClose} />
+      <div className="relative w-[min(900px,94vw)] max-h-[86vh] overflow-auto rounded-2xl bg-white shadow-2xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 id="help-title" className="text-lg font-semibold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="Fermer l’aide"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
+        {children}
       </div>
-    </>
-  );
-}
-
-/* ---------------- Sections ---------------- */
-
-function CmsHowTo() {
-  return (
-    <div className="grid gap-6 text-sm">
-      <Callout title="Les 4 livrables de base">
-        <ul className="list-disc ml-5 space-y-1">
-          <li><b>Nom de fichier</b> → utilisez le fichier renommé proposé par Tagos.</li>
-          <li><b>Texte ALT</b> → description accessible, utile pour Google Images.</li>
-          <li><b>Titre (title)</b> → info-bulle optionnelle.</li>
-          <li><b>Légende</b> → phrase courte sous l’image (facultatif mais utile contexte).</li>
-        </ul>
-      </Callout>
-
-      <Accordion title="WordPress (Médias, Gutenberg, WooCommerce)">
-        <ol className="list-decimal ml-5 space-y-1">
-          <li>Téléversez l’image avec le <b>nom de fichier</b> optimisé.</li>
-          <li>Dans la colonne droite (Médias ou Bloc Image), collez le <b>Texte alternatif</b>.</li>
-          <li>Option : dans <b>Attribut title</b> ou champ <b>Titre</b>, collez le <b>Title</b>.</li>
-          <li>Option : pour l’affichage en dessous de l’image, collez la <b>Légende</b>.</li>
-        </ol>
-        <Code label="Exemple d’HTML rendu (Gutenberg)">
-{`<figure>
-  <img src="/uploads/chaussure-course-homme-bleu.webp"
-       alt="Chaussure de course homme bleu semelle légère"
-       title="Chaussure Course Homme Bleu" />
-  <figcaption>Chaussure de course homme bleu, semelle légère.</figcaption>
-</figure>`}
-        </Code>
-      </Accordion>
-
-      <Accordion title="Shopify (fiches produits, images thème)">
-        <ol className="list-decimal ml-5 space-y-1">
-          <li>Importez l’image dans <b>Contenu > Fichiers</b> ou directement sur la fiche produit.</li>
-          <li>Assurez-vous d’utiliser le <b>nom de fichier</b> optimisé.</li>
-          <li>Dans la fiche produit, <b>Description de l’image (ALT)</b> → collez l’ALT Tagos.</li>
-          <li>La <b>Légende</b> peut être ajoutée dans la description produit (champ riche) si vous l’affichez.</li>
-        </ol>
-        <Code label="Extrait Liquid (thème)">
-{`<img
-  src="{{ image | image_url }}"
-  alt="{{ image.alt | escape }}"
-  title="{{ image.alt | escape }}"
-/>`}
-        </Code>
-      </Accordion>
-
-      <Accordion title="Webflow (Designer > Asset / Image)">
-        <ol className="list-decimal ml-5 space-y-1">
-          <li>Uploadez le fichier avec le <b>nom optimisé</b>.</li>
-          <li>Sélectionnez l’image → <b>Alt text</b> → collez l’ALT.</li>
-          <li>Si vous affichez une légende, ajoutez-la dans le <b>Rich Text</b> sous l’image.</li>
-        </ol>
-      </Accordion>
-
-      <Callout title="Astuce visibilité">
-        Même si vous n’affichez pas la légende côté client, <b>gardez-la dans votre CMS</b> : elle aide
-        vos équipes et peut enrichir le contexte de la page.
-      </Callout>
     </div>
   );
 }
 
-function PackHowTo() {
+function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
   return (
-    <div className="grid gap-6 text-sm">
-      <Callout title="Que contient le Pack SEO ?">
-        <ul className="list-disc ml-5 space-y-1">
-          <li><code>ALT.txt</code>, <code>KEYWORDS.txt</code>, <code>TITLE.txt</code>, <code>CAPTION.txt</code></li>
-          <li><code>structuredData.json</code> (JSON-LD <code>ImageObject</code>)</li>
-          <li><code>sitemap-image.xml</code> (snippet à coller dans votre sitemap)</li>
-          <li>+ votre image <b>renommée</b></li>
-        </ul>
-      </Callout>
-
-      <Accordion title="Intégrer le JSON-LD (optionnel mais recommandé)">
-        <p className="text-slate-600">
-          Copiez le contenu de <code>structuredData.json</code> dans une balise <code>&lt;script type="application/ld+json"&gt;</code>
-          sur la page qui <b>affiche l’image</b>.
-        </p>
-        <Code label="Exemple à coller dans &lt;head&gt; ou juste avant &lt;/body&gt;">
-{`<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "ImageObject",
-  "name": "Titre généré par Tagos",
-  "description": "ALT généré par Tagos",
-  "keywords": "mot-clé 1, mot-clé 2, ...",
-  "contentUrl": "https://www.votresite.com/chemin/vers/image-optimisee.webp"
-}
-</script>`}
-        </Code>
-      </Accordion>
-
-      <Accordion title="Sitemap images (XML)">
-        <p className="text-slate-600">
-          Ouvrez votre <code>sitemap.xml</code> (ou le sitemap d’une section) et insérez le snippet. Remplacez l’URL
-          par l’URL définitive de l’image et de la page qui l’héberge.
-        </p>
-        <Code label="Snippet type (à dupliquer par image)">
-{`<url>
-  <loc>https://www.votresite.com/page-qui-contient-l-image</loc>
-  <image:image>
-    <image:loc>https://www.votresite.com/medias/image-optimisee.webp</image:loc>
-    <image:title>Titre généré par Tagos</image:title>
-    <image:caption>ALT/Légende généré(e) par Tagos</image:caption>
-  </image:image>
-</url>`}
-        </Code>
-      </Accordion>
-
-      <Callout title="Priorité (si vous manquez de temps)">
-        <ol className="list-decimal ml-5 space-y-1">
-          <li>Utiliser le <b>nom de fichier</b> optimisé.</li>
-          <li>Coller l’<b>ALT</b>.</li>
-          <li>Ajouter la <b>Légende</b> si pertinente.</li>
-          <li>Plus tard : JSON-LD + Sitemap pour pousser l’indexation.</li>
-        </ol>
-      </Callout>
-    </div>
-  );
-}
-
-/* ---------------- UI helpers ---------------- */
-
-function Callout({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-indigo-50/40 p-4">
-      <div className="font-medium mb-1">{title}</div>
-      <div className="text-slate-700">{children}</div>
-    </div>
-  );
-}
-
-function Accordion({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = React.useState(true);
-  return (
-    <div className="rounded-xl border border-slate-200">
+    <div className="border rounded-lg">
       <button
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
         aria-expanded={open}
       >
         <span className="font-medium">{title}</span>
-        <svg
-          className={`transition-transform ${open ? 'rotate-180' : ''}`}
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          aria-hidden
-        >
-          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <svg width="18" height="18" viewBox="0 0 24 24" className={open ? 'rotate-180 transition' : 'transition'} aria-hidden="true">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
         </svg>
       </button>
-      {open && <div className="px-4 pb-4 text-slate-700">{children}</div>}
+      {open && <div className="px-4 pb-4 pt-2 text-sm text-slate-700">{children}</div>}
     </div>
   );
 }
 
-function Code({ label, children }: { label?: string; children: string }) {
+export default function HelpPanel({ open, onClose, defaultTab = 'cms' }: HelpPanelProps) {
+  const [tab, setTab] = React.useState<'cms' | 'zip'>(defaultTab);
+  React.useEffect(() => setTab(defaultTab), [defaultTab]);
+
   return (
-    <div className="mt-2">
-      {label && <div className="text-[12px] text-slate-500 mb-1">{label}</div>}
-      <pre className="text-xs bg-slate-900 text-slate-100 p-3 rounded-lg overflow-x-auto">
-        <code>{children}</code>
-      </pre>
-      <div className="mt-2">
-        <CopyButton text={children} />
+    <Modal open={open} onClose={onClose} title="Comment intégrer vos livrables Tagos ?">
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setTab('cms')}
+          className={'px-3 py-1.5 rounded-md text-sm ' + (tab === 'cms' ? 'bg-indigo-600 text-white' : 'bg-slate-100')}
+        >
+          Intégrer dans le CMS
+        </button>
+        <button
+          onClick={() => setTab('zip')}
+          className={'px-3 py-1.5 rounded-md text-sm ' + (tab === 'zip' ? 'bg-indigo-600 text-white' : 'bg-slate-100')}
+        >
+          Pack ZIP
+        </button>
       </div>
-    </div>
+
+      {tab === 'cms' ? (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Voici comment utiliser les <strong>4 livrables principaux</strong> : <em>nom de fichier</em>, <em>ALT</em>, <em>TITLE</em>, <em>légende</em>.
+          </p>
+
+          <Accordion title="WordPress (Médiathèque)">
+            <ol className="list-decimal ml-5 space-y-1">
+              <li>Téléversez l’image optimisée (ou renommez d’abord le fichier local avec le <em>nom SEO</em> proposé).</li>
+              <li>Dans la colonne droite, champ <strong>Texte alternatif</strong> → collez l’ALT Tagos.</li>
+              <li>Champ <strong>Titre</strong> (facultatif) → collez le TITLE.</li>
+              <li>Si vous affichez une légende sous l’image → champ <strong>Légende</strong>.</li>
+            </ol>
+          </Accordion>
+
+          <Accordion title="Shopify (fiches produits, images thème)">
+            <ol className="list-decimal ml-5 space-y-1">
+              <li>Importez l’image dans <strong>Contenu &gt; Fichiers</strong> ou directement sur la fiche produit.</li>
+              <li>Assurez-vous d’utiliser le <strong>nom de fichier</strong> optimisé.</li>
+              <li>Dans la fiche produit, <strong>Description de l’image (ALT)</strong> → collez l’ALT Tagos.</li>
+              <li>La <strong>Légende</strong> peut être ajoutée dans la description produit (champ riche) si vous l’affichez.</li>
+            </ol>
+          </Accordion>
+
+          <Accordion title="Webflow">
+            <ol className="list-decimal ml-5 space-y-1">
+              <li>Importez l’image dans l’Asset Manager avec le <strong>nom</strong> optimisé.</li>
+              <li>Dans les réglages de l’image, remplissez le <strong>ALT</strong> et (si utile) le <strong>TITLE</strong>.</li>
+              <li>Ajoutez la <strong>Légende</strong> dans le bloc texte sous l’image si votre design l’affiche.</li>
+            </ol>
+          </Accordion>
+
+          <Accordion title="Données structurées (JSON-LD) & Sitemap image">
+            <ul className="list-disc ml-5 space-y-1">
+              <li><strong>JSON-LD</strong> : copiez le bloc et collez-le dans le HTML de la page (entre <code>&lt;script type="application/ld+json"&gt;</code> et <code>&lt;/script&gt;</code>), ou via votre plugin SEO (WP Rocket/Yoast/RankMath).</li>
+              <li><strong>Sitemap image</strong> : ajoutez le snippet XML dans votre sitemap (ou un sitemap dédié images) puis soumettez-le dans la Search Console.</li>
+            </ul>
+          </Accordion>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Le <strong>Pack ZIP</strong> contient : l’image optimisée, <em>ALT</em>, <em>TITLE</em>, <em>Légende</em>, <code>structuredData.json</code> et le snippet <code>sitemap-image.xml</code>.
+          </p>
+          <p className="text-sm text-slate-600">
+            Téléchargez-le puis intégrez chaque élément selon votre CMS (onglet précédent).
+          </p>
+        </div>
+      )}
+    </Modal>
   );
 }
-
-function CopyButton({ text }: { text: string }) {
-  const [done, setDone] = React.useState(false);
-  return (
-    <button
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setDone(true);
-        setTimeout(() => setDone(false), 1200);
-      }}
-      className="btn"
-    >
-      {done ? 'Copié ✅' : 'Copier'}
-    </button>
-  );
-      }
