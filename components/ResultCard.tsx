@@ -13,7 +13,7 @@ export type SeoResult = {
   sitemapSnippet: string;
 };
 
-// Alias compat
+// Alias compat (si d'autres fichiers importent ProcessResult)
 export type ProcessResult = SeoResult;
 
 /* ---- Props ----
@@ -33,10 +33,7 @@ type Props =
   | (PropsBase & { data: SeoResult; r?: never })
   | (PropsBase & { r: SeoResult; data?: never });
 
-function hasProp<K extends string>(
-  obj: unknown,
-  key: K
-): obj is Record<K, unknown> {
+function hasProp<K extends string>(obj: unknown, key: K): obj is Record<K, unknown> {
   return typeof obj === 'object' && obj !== null && key in obj;
 }
 
@@ -53,9 +50,9 @@ export default function ResultCard(props: Props) {
   if (!hasProp(props, 'data') && !hasProp(props, 'r')) {
     throw new Error('ResultCard: prop manquante — fournissez `data` ou `r`.');
   }
-  const data: SeoResult = (hasProp(props, 'data')
+  const data: SeoResult = hasProp(props, 'data')
     ? (props.data as SeoResult)
-    : (props.r as SeoResult));
+    : (props.r as SeoResult);
 
   const keywordsStr = data.keywords.join(', ');
 
@@ -123,8 +120,7 @@ export default function ResultCard(props: Props) {
 
   async function downloadSeoPack() {
     try {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // Import léger (optionnel) — nécessite `npm i jszip`
       const JSZip = (await import('jszip')).default as any;
       const zip = new JSZip();
 
@@ -153,7 +149,7 @@ export default function ResultCard(props: Props) {
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch {
       toast(
-        'Pack bientôt dispo (ZIP). Copiez/collez les éléments ci-dessous pour l’instant.'
+        'Pack SEO bientôt dispo. Utilisez les boutons “Copier” en attendant.'
       );
     }
   }
@@ -162,9 +158,7 @@ export default function ResultCard(props: Props) {
     <div className="card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
       {/* En-tête + CTA d’aide */}
       <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-slate-500">
-          Résultats prêts à intégrer dans votre CMS
-        </div>
+        <div className="text-sm text-slate-500">Résultats prêts à intégrer dans votre CMS</div>
         <button
           onClick={onOpenHelp || (() => {})}
           className="text-sm underline underline-offset-2 hover:text-indigo-700"
@@ -175,7 +169,7 @@ export default function ResultCard(props: Props) {
 
       {/* Avant / Après (live) */}
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-slate-2 00 p-3 bg-white">
+        <div className="rounded-xl border border-slate-200 p-3 bg-white">
           <div className="text-xs text-slate-500 mb-2">Avant</div>
           <div className="aspect-square rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
             {previewUrl ? (
@@ -238,13 +232,9 @@ export default function ResultCard(props: Props) {
       <div className="mt-6 grid gap-4">
         <div>
           <div className="text-sm font-medium mb-1">Texte ALT</div>
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">
-            {data.alt}
-          </div>
+          <div className="text-sm text-slate-700 whitespace-pre-wrap">{data.alt}</div>
           <div className="mt-2">
-            <button onClick={() => copy(data.alt)} className="btn">
-              Copier l’ALT
-            </button>
+            <button onClick={() => copy(data.alt)} className="btn">Copier l’ALT</button>
           </div>
         </div>
 
@@ -252,9 +242,7 @@ export default function ResultCard(props: Props) {
           <div className="text-sm font-medium mb-1">Mots-clés</div>
           <div className="text-sm text-slate-700">{keywordsStr}</div>
           <div className="mt-2">
-            <button onClick={() => copy(keywordsStr)} className="btn">
-              Copier les mots-clés
-            </button>
+            <button onClick={() => copy(keywordsStr)} className="btn">Copier les mots-clés</button>
           </div>
         </div>
 
@@ -263,18 +251,14 @@ export default function ResultCard(props: Props) {
             <div className="text-sm font-medium mb-1">Titre</div>
             <div className="text-sm text-slate-700">{data.title}</div>
             <div className="mt-2">
-              <button onClick={() => copy(data.title)} className="btn">
-                Copier le titre
-              </button>
+              <button onClick={() => copy(data.title)} className="btn">Copier le titre</button>
             </div>
           </div>
           <div className="card p-4">
             <div className="text-sm font-medium mb-1">Légende</div>
             <div className="text-sm text-slate-700">{data.caption}</div>
             <div className="mt-2">
-              <button onClick={() => copy(data.caption)} className="btn">
-                Copier la légende
-              </button>
+              <button onClick={() => copy(data.caption)} className="btn">Copier la légende</button>
             </div>
           </div>
         </div>
@@ -283,9 +267,7 @@ export default function ResultCard(props: Props) {
           <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
           <div className="text-sm text-slate-700">{data.filename}</div>
           <div className="mt-2">
-            <button onClick={() => copy(data.filename)} className="btn">
-              Copier le nom
-            </button>
+            <button onClick={() => copy(data.filename)} className="btn">Copier le nom</button>
           </div>
         </div>
 
@@ -314,9 +296,7 @@ export default function ResultCard(props: Props) {
             value={data.sitemapSnippet}
           />
           <div className="mt-2">
-            <button onClick={() => copy(data.sitemapSnippet)} className="btn">
-              Copier XML
-            </button>
+            <button onClick={() => copy(data.sitemapSnippet)} className="btn">Copier XML</button>
           </div>
         </div>
       </div>
@@ -327,4 +307,5 @@ export default function ResultCard(props: Props) {
       </p>
     </div>
   );
-      }
+}
+```0
