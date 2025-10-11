@@ -118,40 +118,54 @@ export default function ResultCard(props: Props) {
     URL.revokeObjectURL(url);
   }
 
+  // Version sans dépendance: crée un fichier texte contenant tous les livrables
   async function downloadSeoPack() {
-    try {
-      // Import léger (optionnel) — nécessite `npm i jszip`
-      const JSZip = (await import('jszip')).default as any;
-      const zip = new JSZip();
+    const packParts: string[] = [];
 
-      zip.file('ALT.txt', data.alt);
-      zip.file('KEYWORDS.txt', keywordsStr);
-      zip.file('TITLE.txt', data.title);
-      zip.file('CAPTION.txt', data.caption);
-      zip.file('structuredData.json', JSON.stringify(data.structuredData, null, 2));
-      zip.file('sitemap-image.xml', data.sitemapSnippet);
+    packParts.push('=== TAGOS — PACK SEO ===\n');
 
-      if (originalFile) {
-        const arrayBuf = await originalFile.arrayBuffer();
-        zip.file(data.filename || (originalName || 'image.jpg'), arrayBuf);
-      }
+    packParts.push('>> FICHIER IMAGE (NOM SEO)');
+    packParts.push(data.filename + '\n');
 
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download =
-        (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-pack') +
-        '.zip';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch {
-      toast(
-        'Pack SEO bientôt dispo. Utilisez les boutons “Copier” en attendant.'
+    packParts.push('>> ALT');
+    packParts.push(data.alt + '\n');
+
+    packParts.push('>> TITLE');
+    packParts.push(data.title + '\n');
+
+    packParts.push('>> LEGENDE');
+    packParts.push(data.caption + '\n');
+
+    packParts.push('>> KEYWORDS (séparés par des virgules)');
+    packParts.push(keywordsStr + '\n');
+
+    packParts.push('>> JSON-LD (structuredData.json)');
+    packParts.push(JSON.stringify(data.structuredData, null, 2) + '\n');
+
+    packParts.push('>> SITEMAP IMAGE (sitemap-image.xml)');
+    packParts.push(data.sitemapSnippet + '\n');
+
+    if (originalFile) {
+      packParts.push(
+        'NOTE: Téléchargez l’image renommée via le bouton dédié “Télécharger l’image optimisée”.'
+      );
+    } else {
+      packParts.push(
+        'NOTE: Aucune image source attachée. Renommez votre fichier local avec le nom SEO ci-dessus.'
       );
     }
+
+    const content = packParts.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const base = originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-pack';
+    a.href = url;
+    a.download = `${base}.tagos-pack.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
   return (
@@ -308,4 +322,4 @@ export default function ResultCard(props: Props) {
     </div>
   );
 }
-
+```0
