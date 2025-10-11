@@ -1,3 +1,4 @@
+// components/ResultCard.tsx
 'use client';
 
 import React from 'react';
@@ -9,7 +10,7 @@ export type SeoResult = {
   filename: string;     // nom SEO (slug + extension)
   title: string;
   caption: string;
-  structuredData: any;  // JSON-LD ImageObject
+  structuredData: unknown;  // JSON-LD ImageObject
   sitemapSnippet: string;
 };
 
@@ -102,9 +103,11 @@ export default function ResultCard(props: Props) {
         data.caption,
       ],
     ];
+    // ✅ correction: suppression de la parenthèse en trop
     const csv = rows
-      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')))
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
       .join('\n');
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -321,4 +324,4 @@ export default function ResultCard(props: Props) {
       </p>
     </div>
   );
-}
+      }
