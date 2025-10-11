@@ -13,14 +13,10 @@ export type SeoResult = {
   sitemapSnippet: string;
 };
 
-// Alias compat (si d'autres fichiers importent ProcessResult)
+// Alias compat
 export type ProcessResult = SeoResult;
 
-/* ---- Props ----
-   On accepte AU CHOIX:
-   - { data: SeoResult }    (nouveau)
-   - { r: SeoResult }       (ancien usage)
-*/
+/* ---- Props ---- */
 type PropsBase = {
   previewUrl?: string | null;
   originalFile?: File | null;
@@ -36,21 +32,18 @@ function hasProp<K extends string>(obj: unknown, key: K): obj is Record<K, unkno
   return typeof obj === 'object' && obj !== null && key in obj;
 }
 
-/* ===================== Scoring helpers crédibles (3 indices) ===================== */
+/* ===================== Scoring helpers ===================== */
 
 function clamp(x: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Math.round(x)));
 }
 
 function normLenScore(len: number, idealMin: number, idealMax: number, fullPoints = 100) {
-  // score maximum si dans l'intervalle idéal,
-  // décroissance linéaire en dehors, jusqu'à 0.
   if (len <= 0) return 0;
   if (len >= idealMin && len <= idealMax) return fullPoints;
-  const dist =
-    len < idealMin ? idealMin - len : len - idealMax;
+  const dist = len < idealMin ? idealMin - len : len - idealMax;
   const range = Math.max(idealMax - idealMin, 1);
-  const penalty = Math.min(1, dist / range); // 0..1
+  const penalty = Math.min(1, dist / range);
   return clamp(fullPoints * (1 - penalty));
 }
 
@@ -69,7 +62,7 @@ function jaccard(a: string[], b: string[]) {
   const B = new Set(b);
   const inter = new Set([...A].filter(x => B.has(x))).size;
   const uni = new Set([...A, ...B]).size || 1;
-  return inter / uni; // 0..1
+  return inter / uni;
 }
 
 /** Qualité du nom de fichier (0..100) */
@@ -102,25 +95,19 @@ function scoreFilename(name: string | null | undefined): number {
 function scoreReadability(alt: string, title: string, caption: string): number {
   let s = 0;
 
-  // ALT: longueur et présence
   if (alt?.trim()) {
     const len = alt.trim().length;
-    s += 40 * (normLenScore(len, 50, 120) / 100); // 0..40
+    s += 40 * (normLenScore(len, 50, 120) / 100);
   }
-
-  // Title: bonus présence + longueur raisonnable
   if (title?.trim()) {
     const len = title.trim().length;
-    s += 20 * (normLenScore(len, 20, 70) / 100); // 0..20
+    s += 20 * (normLenScore(len, 20, 70) / 100);
   }
-
-  // Caption: bonus présence + longueur raisonnable
   if (caption?.trim()) {
     const len = caption.trim().length;
-    s += 20 * (normLenScore(len, 30, 140) / 100); // 0..20
+    s += 20 * (normLenScore(len, 30, 140) / 100);
   }
 
-  // Pénalité si ALT, title ou caption ne contiennent que des chiffres
   const allNumeric = (t: string) => /^\d+$/.test((t || '').trim());
   if (allNumeric(alt)) s -= 15;
   if (allNumeric(title)) s -= 10;
@@ -132,49 +119,38 @@ function scoreReadability(alt: string, title: string, caption: string): number {
 /** Indexabilité (filename + JSON-LD + Sitemap) -> 0..100 */
 function scoreIndexability(filename: string, hasJsonLd: boolean, hasSitemap: boolean): number {
   let s = 0;
-
-  s += 60 * (scoreFilename(filename) / 100); // 0..60
-
+  s += 60 * (scoreFilename(filename) / 100);
   if (hasJsonLd) s += 20;
   if (hasSitemap) s += 20;
-
   return clamp(s);
 }
 
-/** Pertinence (keywords qualité + cohérence avec ALT) -> 0..100 */
+/** Pertinence (keywords + cohérence ALT) -> 0..100 */
 function scoreRelevance(keywords: string[], alt: string): number {
   const cleanKw = (keywords || []).map(k => String(k || '').trim()).filter(Boolean);
   let s = 0;
 
-  // Taille du set, diversité, pas trop ni pas assez
   const uniq = Array.from(new Set(cleanKw.map(k => k.toLowerCase())));
   const count = uniq.length;
+
   if (count >= 3 && count <= 8) s += 35;
   else if (count > 0) s += 15;
 
-  // Pénalité si beaucoup de doublons ou si tous identiques/numériques
   if (count <= 1 && cleanKw.length > 1) s -= 10;
   if (uniq.every(k => /^\d+$/.test(k))) s -= 20;
 
-  // Longueur moyenne des mots/phrases (viser descriptif court)
-  const avgLen =
-    uniq.reduce((acc, k) => acc + k.length, 0) / Math.max(1, count);
+  const avgLen = uniq.reduce((acc, k) => acc + k.length, 0) / Math.max(1, count);
   s += 25 * (normLenScore(avgLen, 6, 26) / 100);
 
-  // Cohérence avec l’ALT (Jaccard)
-  const tA = tokenize(alt);
-  const tK = tokenize(uniq.join(' '));
-  const jac = jaccard(tA, tK); // 0..1
-  s += Math.round(40 * jac); // 0..40
+  const jac = jaccard(tokenize(alt), tokenize(uniq.join(' ')));
+  s += Math.round(40 * jac);
 
   return clamp(s);
 }
 
 /** Score global pondéré */
 function scoreGlobal(readability: number, indexability: number, relevance: number) {
-  // 35% + 35% + 30%
-  const g = 0.35 * readability + 0.35 * indexability + 0.30 * relevance;
-  return clamp(g);
+  return clamp(0.35 * readability + 0.35 * indexability + 0.30 * relevance);
 }
 
 /* ===================== Composant ===================== */
@@ -211,11 +187,26 @@ export default function ResultCard(props: Props) {
     toast('Copié ✅');
   }
 
-  /* ---- Scores ---- */
-  const readability = scoreReadability(data.alt, data.title, data.caption);
-  const indexability = scoreIndexability(data.filename, !!data.structuredData, !!data.sitemapSnippet);
-  const relevance = scoreRelevance(data.keywords, data.alt);
-  const globalScore = scoreGlobal(readability, indexability, relevance);
+  /* ---- 3 scénarios de score ---- */
+
+  // 1) AVANT (sans Tagos) : on part du nom original, pas d’ALT/titre/légende, pas de JSON-LD ni sitemap
+  const baseFilename = (originalName || data.filename || '').toString();
+  const before_read = scoreReadability('', '', '');
+  const before_ind  = scoreIndexability(baseFilename, false, false);
+  const before_rel  = scoreRelevance([], '');
+  const before_glob = scoreGlobal(before_read, before_ind, before_rel);
+
+  // 2) APRÈS (modifs Tagos) : on utilise les champs générés, mais sans JSON-LD ni sitemap
+  const mod_read = scoreReadability(data.alt, data.title, data.caption);
+  const mod_ind  = scoreIndexability(data.filename, false, false);
+  const mod_rel  = scoreRelevance(data.keywords, data.alt);
+  const mod_glob = scoreGlobal(mod_read, mod_ind, mod_rel);
+
+  // 3) INSTALLÉ (pack complet) : Tagos + JSON-LD + sitemap
+  const inst_read = mod_read;
+  const inst_ind  = scoreIndexability(data.filename, !!data.structuredData, !!data.sitemapSnippet);
+  const inst_rel  = mod_rel;
+  const inst_glob = scoreGlobal(inst_read, inst_ind, inst_rel);
 
   /* ---- Actions ---- */
 
@@ -240,7 +231,10 @@ export default function ResultCard(props: Props) {
 
   async function downloadCsv() {
     const rows = [
-      ['original_name', 'filename', 'alt', 'keywords', 'title', 'caption', 'readability', 'indexability', 'relevance', 'global'],
+      [
+        'original_name','filename','alt','keywords','title','caption',
+        'score_avant','score_modifs','score_installe'
+      ],
       [
         originalName ?? 'image',
         data.filename,
@@ -248,10 +242,9 @@ export default function ResultCard(props: Props) {
         keywordsStr,
         data.title,
         data.caption,
-        String(readability),
-        String(indexability),
-        String(relevance),
-        String(globalScore),
+        String(before_glob),
+        String(mod_glob),
+        String(inst_glob),
       ],
     ];
     const csv = rows
@@ -270,7 +263,7 @@ export default function ResultCard(props: Props) {
     URL.revokeObjectURL(url);
   }
 
-  // Image annotée avec la note globale
+  // Image annotée avec la note "modifications"
   async function downloadImageWithScore() {
     if (!originalFile || !previewUrl) {
       toast('Aperçu indisponible.');
@@ -297,17 +290,15 @@ export default function ResultCard(props: Props) {
     const pad = Math.max(16, Math.round(w * 0.02));
     const radius = Math.max(12, Math.round(w * 0.015));
     const badgeH = Math.max(60, Math.round(h * 0.09));
-    const badgeW = Math.max(300, Math.round(w * 0.32));
+    const badgeW = Math.max(360, Math.round(w * 0.40));
 
-    // Fond blanc semi opaque
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     roundRect(ctx, pad, pad, badgeW, badgeH, radius);
     ctx.fill();
 
-    // Texte
     ctx.fillStyle = '#111827';
     ctx.font = `bold ${Math.max(22, Math.round(badgeH * 0.35))}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto`;
-    ctx.fillText(`Score ${globalScore}/100`, pad + Math.round(badgeH * 0.4), pad + Math.round(badgeH * 0.65));
+    ctx.fillText(`Score (modifs Tagos) ${mod_glob}/100`, pad + Math.round(badgeH * 0.35), pad + Math.round(badgeH * 0.65));
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
     if (!blob) {
@@ -336,17 +327,16 @@ export default function ResultCard(props: Props) {
     ctx.closePath();
   }
 
-  // Pack texte contenant tous les livrables + sous-scores
+  // Pack texte (scores + livrables)
   async function downloadSeoPack() {
     const packParts: string[] = [];
 
     packParts.push('=== PACK SEO IMAGE ===\n');
 
     packParts.push('>> SCORES');
-    packParts.push(`Lisibilité : ${readability}/100`);
-    packParts.push(`Indexabilité : ${indexability}/100`);
-    packParts.push(`Pertinence : ${relevance}/100`);
-    packParts.push(`Global : ${globalScore}/100\n`);
+    packParts.push(`Sans Tagos : ${before_glob}/100`);
+    packParts.push(`Modifications (Tagos) : ${mod_glob}/100`);
+    packParts.push(`Installé (pack complet) : ${inst_glob}/100\n`);
 
     packParts.push('>> FICHIER IMAGE (NOM SEO)');
     packParts.push(data.filename + '\n');
@@ -369,12 +359,6 @@ export default function ResultCard(props: Props) {
     packParts.push('>> SITEMAP IMAGE (sitemap-image.xml)');
     packParts.push(data.sitemapSnippet + '\n');
 
-    if (originalFile) {
-      packParts.push('NOTE: Téléchargez aussi l’image annotée (voir bouton dédié).');
-    } else {
-      packParts.push('NOTE: Aucune image source attachée.');
-    }
-
     const content = packParts.join('\n');
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -392,27 +376,32 @@ export default function ResultCard(props: Props) {
 
   return (
     <div className="card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
-      {/* Scores détaillés */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-sm">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          <strong>Global</strong> {globalScore}/100
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 text-sm">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-indigo-500" />
-          <strong>Lisibilité</strong> {readability}/100
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 text-sky-700 border border-sky-200 px-3 py-1 text-sm">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-500" />
-          <strong>Indexabilité</strong> {indexability}/100
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 text-sm">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
-          <strong>Pertinence</strong> {relevance}/100
-        </span>
+      {/* 3 notes claires */}
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 text-sm min-w-[210px]">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400" />
+            <strong>Sans Tagos</strong>
+          </span>
+          <span className="text-sm font-semibold">{before_glob}/100</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 text-sm min-w-[210px]">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-indigo-500" />
+            <strong>Avec modifications (Tagos)</strong>
+          </span>
+          <span className="text-sm font-semibold">{mod_glob}/100</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-sm min-w-[210px]">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <strong>Installé (pack complet)</strong>
+          </span>
+          <span className="text-sm font-semibold">{inst_glob}/100</span>
+        </div>
       </div>
 
-      {/* Avant / Après */}
+      {/* Avant / Après visuels */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border border-slate-200 p-3 bg-white">
           <div className="text-xs text-slate-500 mb-2">Avant</div>
@@ -457,13 +446,13 @@ export default function ResultCard(props: Props) {
         </div>
       </div>
 
-      {/* Boutons principaux */}
+      {/* Boutons */}
       <div className="mt-5 flex flex-wrap gap-2">
         <button
           onClick={downloadImageWithScore}
           className="btn btn-primary shadow-md shadow-indigo-600/20"
         >
-          Télécharger l’image avec la note
+          Télécharger l’image avec la note (modifs)
         </button>
         <button onClick={downloadSeoPack} className="btn">
           Télécharger le pack (scores + SEO)
@@ -476,7 +465,7 @@ export default function ResultCard(props: Props) {
         </button>
       </div>
 
-      {/* Livrables détaillés */}
+      {/* Détails SEO */}
       <details className="mt-6">
         <summary className="cursor-pointer select-none text-sm font-medium text-slate-800">
           Voir les détails SEO
@@ -555,4 +544,4 @@ export default function ResultCard(props: Props) {
       </details>
     </div>
   );
-}
+                       }
