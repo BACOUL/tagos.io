@@ -6,11 +6,11 @@ import React from 'react';
 export type SeoResult = {
   alt: string;
   keywords: string[];
-  filename: string;     // nom SEO (slug + extension)
+  filename: string;      // nom SEO (slug + extension)
   title: string;
   caption: string;
-  structuredData: any;  // JSON-LD ImageObject
-  sitemapSnippet: string;
+  structuredData: unknown; // JSON-LD ImageObject
+  sitemapSnippet: string;  // XML <image:image>…
 };
 
 // Alias compat (si d'autres fichiers importent ProcessResult)
@@ -37,121 +37,6 @@ function hasProp<K extends string>(obj: unknown, key: K): obj is Record<K, unkno
   return typeof obj === 'object' && obj !== null && key in obj;
 }
 
-/* --------- Scoring très lisible (0 → 100) ---------
-   Règles simples et compréhensibles:
-   - ALT 50–140 caractères: +25 (sinon prorata)
-   - Mots-clés 3–8: +25 (sinon prorata)
-   - Filename non générique (≠ IMG_/DSC_...): +15
-   - Title présent: +10
-   - Légende présente: +10
-   - JSON-LD présent: +10
-   - Sitemap snippet présent: +5
-*/
-function computeScore(d: SeoResult): { score: number; reasons: string[] } {
-  const reasons: string[] = [];
-  let s = 0;
-
-  // ALT
-  const altLen = (d.alt || '').trim().length;
-  if (altLen >= 50 && altLen <= 140) {
-    s += 25;
-    reasons.push('ALT: longueur idéale (50–140)');
-  } else {
-    // prorata simple
-    const ratio = Math.min(1, altLen / 140);
-    const pts = Math.round(25 * ratio);
-    s += pts;
-    reasons.push(`ALT: ${altLen} caractères (${pts}/25)`);
-  }
-
-  // Keywords
-  const kw = Array.isArray(d.keywords) ? d.keywords.filter(Boolean) : [];
-  if (kw.length >= 3 && kw.length <= 8) {
-    s += 25;
-    reasons.push('Mots-clés: quantité idéale (3–8)');
-  } else {
-    const ratio = Math.min(1, kw.length / 8);
-    const pts = Math.round(25 * ratio);
-    s += pts;
-    reasons.push(`Mots-clés: ${kw.length} (${pts}/25)`);
-  }
-
-  // Filename non générique
-  const fn = (d.filename || '').toLowerCase();
-  const generic = /^(img_|dsc_|image|photo|p[0-9]+|img[0-9]+)/.test(fn);
-  if (!generic && fn) {
-    s += 15;
-    reasons.push('Nom de fichier: descriptif');
-  } else {
-    reasons.push('Nom de fichier: générique');
-  }
-
-  if (d.title?.trim()) { s += 10; reasons.push('Title: présent'); }
-  else { reasons.push('Title: manquant'); }
-
-  if (d.caption?.trim()) { s += 10; reasons.push('Légende: présente'); }
-  else { reasons.push('Légende: manquante'); }
-
-  if (d.structuredData) { s += 10; reasons.push('JSON-LD: présent'); }
-  else { reasons.push('JSON-LD: manquant'); }
-
-  if (d.sitemapSnippet?.trim()) { s += 5; reasons.push('Sitemap: présent'); }
-  else { reasons.push('Sitemap: manquant'); }
-
-  return { score: Math.max(0, Math.min(100, s)), reasons };
-}
-
-/* --------- Dessin du badge de note sur l'image --------- */
-async function drawScoreOnImage(imgUrl: string, score: number): Promise<Blob> {
-  // charge l'image
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.decoding = 'async';
-  img.loading = 'eager';
-  img.src = imgUrl;
-  await new Promise<void>((res, rej) => {
-    img.onload = () => res();
-    img.onerror = () => rej(new Error('Impossible de charger l’aperçu.'));
-  });
-
-  // canvas
-  const canvas = document.createElement('canvas');
-  const scale = 1; // garder la taille originale
-  canvas.width = Math.max(1, Math.floor(img.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.floor(img.naturalHeight * scale));
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-  // badge
-  const pad = Math.round(Math.max(canvas.width, canvas.height) * 0.02); // 2%
-  const radius = Math.round(Math.max(canvas.width, canvas.height) * 0.055); // rayon badge
-  const cx = pad + radius;
-  const cy = pad + radius;
-
-  // cercle
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.closePath();
-  // fond en fonction du score
-  let bg = '#f97316'; // orange
-  if (score >= 80) bg = '#10b981'; // vert
-  else if (score >= 60) bg = '#f59e0b'; // amber
-  ctx.fillStyle = bg;
-  ctx.fill();
-
-  // texte
-  const pct = `${score}`;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${Math.round(radius * 0.9)}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(pct, cx, cy);
-
-  return await new Promise<Blob>((resolve) => {
-    canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.92);
-  });
-}
-
 export default function ResultCard(props: Props) {
   const {
     previewUrl = null,
@@ -171,6 +56,7 @@ export default function ResultCard(props: Props) {
 
   const keywordsStr = data.keywords.join(', ');
 
+  /* ---------- Helpers UI ---------- */
   function toast(msg: string) {
     if (onToast) return onToast(msg);
     const el = document.createElement('div');
@@ -186,19 +72,20 @@ export default function ResultCard(props: Props) {
     toast('Copié ✅');
   }
 
+  /* ---------- Téléchargements ---------- */
   async function downloadRenamed() {
     if (!originalFile) {
       toast('Aucune image à télécharger.');
       return;
     }
-    const newName =
+    const base =
       data.filename ||
-      (originalName ? originalName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+      ((originalName ? originalName.replace(/\.[^.]+$/, '') : 'image') + '.jpg');
 
     const url = URL.createObjectURL(originalFile);
     const a = document.createElement('a');
     a.href = url;
-    a.download = newName;
+    a.download = base;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -217,9 +104,16 @@ export default function ResultCard(props: Props) {
         data.caption,
       ],
     ];
+
+    // ⚠️ Correction du bug de parenthèses ici
     const csv = rows
-      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')))
+      .map((r) =>
+        r
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(',')
+      )
       .join('\n');
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -233,7 +127,7 @@ export default function ResultCard(props: Props) {
     URL.revokeObjectURL(url);
   }
 
-  // Version sans dépendance: crée un fichier texte contenant tous les livrables
+  // Pack “tout-en-un” (txt)
   async function downloadSeoPack() {
     const packParts: string[] = [];
 
@@ -262,7 +156,7 @@ export default function ResultCard(props: Props) {
 
     if (originalFile) {
       packParts.push(
-        'NOTE: Téléchargez l’image renommée via le bouton “Télécharger l’image optimisée”.'
+        'NOTE: Téléchargez l’image renommée via “Télécharger l’image optimisée”.'
       );
     } else {
       packParts.push(
@@ -283,54 +177,40 @@ export default function ResultCard(props: Props) {
     setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
-  // Télécharger l'image avec badge de score
-  async function downloadScoredImage() {
-    try {
-      if (!previewUrl) {
-        toast('Aperçu indisponible.');
-        return;
-      }
-      const { score } = computeScore(data);
-      const blob = await drawScoreOnImage(previewUrl, score);
-      const a = document.createElement('a');
-      const base = data.filename?.replace(/\.[^.]+$/, '') || originalName?.replace(/\.[^.]+$/, '') || 'image';
-      a.href = URL.createObjectURL(blob);
-      a.download = `${base}-note-${score}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
-    } catch {
-      toast('Impossible de générer l’image notée.');
-    }
-  }
-
-  const { score, reasons } = computeScore(data);
-
   return (
-    <div className="card p-5 sm:p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
-      {/* En-tête compact */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <div className="text-sm text-slate-500">Résultats prêts à intégrer dans votre CMS</div>
-        <button
-          onClick={onOpenHelp || (() => {})}
-          className="text-sm underline underline-offset-2 hover:text-indigo-700 self-start sm:self-auto"
-        >
-          Comment utiliser ?
-        </button>
+    <div className="mx-auto w-full max-w-4xl">
+      {/* Bandeau résumé rapide */}
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 border border-emerald-100">
+            ✅ Score lisibilité SEO
+            <span className="ml-1 rounded-md bg-white px-1.5 py-0.5 text-[11px] text-emerald-700 border border-emerald-200">
+              prêt
+            </span>
+          </span>
+          <span className="text-slate-500">
+            Nom: <span className="font-medium text-slate-700">{data.filename}</span>
+          </span>
+          {originalName && (
+            <span className="text-slate-500">
+              Original: <span className="font-mono text-slate-700">{originalName}</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Bloc visuel: image + score + actions principales */}
-      <div className="grid sm:grid-cols-[1fr_auto] gap-4">
-        {/* Image avec légende fichier */}
-        <div className="rounded-xl border border-slate-200 p-3 bg-white">
-          <div className="aspect-[4/3] rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
+      {/* Avant / Après + actions */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr]">
+        {/* AVANT */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="text-xs text-slate-500 mb-2">Avant</div>
+          <div className="aspect-square rounded-xl overflow-hidden border bg-slate-50 grid place-items-center">
             {previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={previewUrl}
-                alt={data.alt || 'aperçu'}
-                className="h-full w-full object-contain"
+                alt="aperçu avant"
+                className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
               />
@@ -338,61 +218,42 @@ export default function ResultCard(props: Props) {
               <div className="text-xs text-slate-400">Aperçu indisponible</div>
             )}
           </div>
-          <div className="mt-2 text-[11px] text-slate-500 truncate">
-            {data.filename || originalName || 'image'}
-          </div>
+          <div className="mt-2 text-[11px] text-slate-500 truncate">{originalName || 'image'}</div>
         </div>
 
-        {/* Score + actions */}
-        <div className="rounded-xl border border-slate-200 p-3 bg-white flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div
-                className={[
-                  'h-14 w-14 rounded-full grid place-items-center text-white text-lg font-bold',
-                  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-orange-500',
-                ].join(' ')}
-                aria-label={`Note de référencement ${score}/100`}
-                title={`Note ${score}/100`}
-              >
-                {score}
-              </div>
-            </div>
-            <div className="text-sm">
-              <div className="font-medium text-slate-900">Note de référencement</div>
-              <div className="text-slate-600">Calcule basée sur ALT, mots-clés, nom, title, légende, JSON-LD, sitemap.</div>
-            </div>
+        {/* APRES */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="text-xs text-slate-500 mb-2">Après (Tagos)</div>
+          <div className="aspect-square rounded-xl overflow-hidden border bg-slate-50 grid place-items-center">
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt={data.alt || 'image optimisée'}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div className="text-xs text-slate-400">Aperçu indisponible</div>
+            )}
           </div>
+          <div className="mt-2 text-[11px] text-slate-500 truncate">{data.filename}</div>
 
-          <div className="grid gap-2">
-            <button
-              onClick={downloadScoredImage}
-              className="btn btn-primary shadow-md shadow-indigo-600/20 w-full"
-            >
-              Télécharger l’image notée
+          {/* Boutons principaux */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={downloadRenamed} className="btn btn-primary shadow-md shadow-indigo-600/20">
+              Télécharger l’image optimisée
             </button>
-            <button onClick={downloadRenamed} className="btn w-full">
-              Télécharger l’image optimisée (nom SEO)
-            </button>
-            <button onClick={downloadSeoPack} className="btn w-full">
-              Télécharger le pack SEO (TXT)
-            </button>
-            <button onClick={downloadCsv} className="btn w-full">
-              Export CSV
-            </button>
+            <button onClick={downloadSeoPack} className="btn">Télécharger le pack SEO</button>
+            <button onClick={downloadCsv} className="btn">Export CSV</button>
           </div>
-
-          <ul className="mt-1 text-[12px] text-slate-600 list-disc pl-5 space-y-0.5">
-            {reasons.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
-          </ul>
         </div>
       </div>
 
-      {/* Livrables détaillés (compact, lisible) */}
+      {/* Détails livrables */}
       <div className="mt-6 grid gap-4">
-        <div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-medium mb-1">Texte ALT</div>
           <div className="text-sm text-slate-700 whitespace-pre-wrap">{data.alt}</div>
           <div className="mt-2">
@@ -400,7 +261,7 @@ export default function ResultCard(props: Props) {
           </div>
         </div>
 
-        <div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-medium mb-1">Mots-clés</div>
           <div className="text-sm text-slate-700">{keywordsStr}</div>
           <div className="mt-2">
@@ -409,23 +270,24 @@ export default function ResultCard(props: Props) {
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="card p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-sm font-medium mb-1">Titre</div>
-            <div className="text-sm text-slate-700 break-words">{data.title}</div>
+            <div className="text-sm text-slate-700">{data.title}</div>
             <div className="mt-2">
               <button onClick={() => copy(data.title)} className="btn">Copier le titre</button>
             </div>
           </div>
-          <div className="card p-4">
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-sm font-medium mb-1">Légende</div>
-            <div className="text-sm text-slate-700 break-words">{data.caption}</div>
+            <div className="text-sm text-slate-700">{data.caption}</div>
             <div className="mt-2">
               <button onClick={() => copy(data.caption)} className="btn">Copier la légende</button>
             </div>
           </div>
         </div>
 
-        <div className="card p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
           <div className="text-sm text-slate-700">{data.filename}</div>
           <div className="mt-2">
@@ -433,7 +295,7 @@ export default function ResultCard(props: Props) {
           </div>
         </div>
 
-        <div className="card p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-medium mb-1">Données structurées (JSON-LD)</div>
           <textarea
             readOnly
@@ -450,7 +312,7 @@ export default function ResultCard(props: Props) {
           </div>
         </div>
 
-        <div className="card p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-medium mb-1">Sitemap images (XML)</div>
           <textarea
             readOnly
@@ -463,10 +325,20 @@ export default function ResultCard(props: Props) {
         </div>
       </div>
 
-      {/* Note UX */}
+      {/* Aide */}
+      <div className="mt-4 flex items-center justify-end">
+        <button
+          onClick={onOpenHelp || (() => {})}
+          className="text-sm underline underline-offset-2 text-indigo-700 hover:text-indigo-600"
+        >
+          Comment intégrer dans mon CMS ?
+        </button>
+      </div>
+
+      {/* Note d’aide */}
       <p className="mt-3 text-[12px] text-slate-500">
         Astuce : renommez votre fichier avec un nom descriptif clair. Les CMS et Google comprennent mieux le contenu.
       </p>
     </div>
   );
-  }
+              }
