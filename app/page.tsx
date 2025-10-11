@@ -172,7 +172,7 @@ export default function HomePage() {
       if (res.status === 429) {
         setErrorMsg((data?.error as string) || 'Quota dépassé : 3 images gratuites par jour.');
         if (typeof data?.remaining === 'number') setRemaining(data.remaining);
-        if (typeof d?.resetAt === 'string') setResetAt(d.resetAt);
+        if (typeof data?.resetAt === 'string') setResetAt(data.resetAt);
         setProcessData(null);
         return;
       }
@@ -476,7 +476,7 @@ export default function HomePage() {
 
           {/* Bandeau crédits restants */}
           {remaining !== null && (
-            <div className="mt-4 mx-auto max-w-3xl rounded-xl border bg白 p-4 text-sm bg-white">
+            <div className="mt-4 mx-auto max-w-3xl rounded-xl border bg-white p-4 text-sm">
               <div className="flex items-center justify-between">
                 <div className="font-medium">Crédits restants aujourd’hui</div>
                 <div className="text-slate-600">
@@ -688,4 +688,4 @@ export default function HomePage() {
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} defaultTab="cms" />
     </main>
   );
-}
+        }
