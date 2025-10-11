@@ -1,133 +1,324 @@
-
 'use client';
 
 import React from 'react';
 
-type HelpPanelProps = {
-  open: boolean;
-  onClose: () => void;
-  defaultTab?: 'cms' | 'zip';
+/* -------- Types -------- */
+export type SeoResult = {
+  alt: string;
+  keywords: string[];
+  filename: string;     // nom SEO (slug + extension)
+  title: string;
+  caption: string;
+  structuredData: any;  // JSON-LD ImageObject
+  sitemapSnippet: string;
 };
 
-function Modal({ open, onClose, children, title }: { open: boolean; onClose: () => void; children: React.ReactNode; title: string }) {
-  if (!open) return null;
-  return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="help-title"
-    >
-      <div className="absolute inset-0 bg-slate-900/60" onClick={onClose} />
-      <div className="relative w-[min(900px,94vw)] max-h-[86vh] overflow-auto rounded-2xl bg-white shadow-2xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 id="help-title" className="text-lg font-semibold">{title}</h3>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Fermer l’aide"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+// Alias compat (si d'autres fichiers importent ProcessResult)
+export type ProcessResult = SeoResult;
+
+/* ---- Props ----
+   On accepte AU CHOIX:
+   - { data: SeoResult }    (nouveau)
+   - { r: SeoResult }       (ancien usage)
+*/
+type PropsBase = {
+  previewUrl?: string | null;
+  originalFile?: File | null;
+  originalName?: string | null;
+  onOpenHelp?: () => void;
+  onToast?: (msg: string) => void;
+};
+
+type Props =
+  | (PropsBase & { data: SeoResult; r?: never })
+  | (PropsBase & { r: SeoResult; data?: never });
+
+function hasProp<K extends string>(obj: unknown, key: K): obj is Record<K, unknown> {
+  return typeof obj === 'object' && obj !== null && key in obj;
 }
 
-function Accordion({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(false);
-  return (
-    <div className="border rounded-lg">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
-        aria-expanded={open}
-      >
-        <span className="font-medium">{title}</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" className={open ? 'rotate-180 transition' : 'transition'} aria-hidden="true">
-          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
-        </svg>
-      </button>
-      {open && <div className="px-4 pb-4 pt-2 text-sm text-slate-700">{children}</div>}
-    </div>
-  );
-}
+export default function ResultCard(props: Props) {
+  const {
+    previewUrl = null,
+    originalFile = null,
+    originalName = null,
+    onOpenHelp,
+    onToast,
+  } = props;
 
-export default function HelpPanel({ open, onClose, defaultTab = 'cms' }: HelpPanelProps) {
-  const [tab, setTab] = React.useState<'cms' | 'zip'>(defaultTab);
-  React.useEffect(() => setTab(defaultTab), [defaultTab]);
+  // Garde robuste: assure qu'on a data OU r
+  if (!hasProp(props, 'data') && !hasProp(props, 'r')) {
+    throw new Error('ResultCard: prop manquante — fournissez `data` ou `r`.');
+  }
+  const data: SeoResult = hasProp(props, 'data')
+    ? (props.data as SeoResult)
+    : (props.r as SeoResult);
+
+  const keywordsStr = data.keywords.join(', ');
+
+  function toast(msg: string) {
+    if (onToast) return onToast(msg);
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.className =
+      'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-md shadow z-[60]';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  }
+
+  function copy(text: string) {
+    navigator.clipboard.writeText(text);
+    toast('Copié ✅');
+  }
+
+  async function downloadRenamed() {
+    if (!originalFile) {
+      toast('Aucune image à télécharger.');
+      return;
+    }
+    const newName =
+      data.filename ||
+      (originalName ? originalName.replace(/\.[^.]+$/, '') : 'image') + '.jpg';
+
+    const url = URL.createObjectURL(originalFile);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = newName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  async function downloadCsv() {
+    const rows = [
+      ['original_name', 'filename', 'alt', 'keywords', 'title', 'caption'],
+      [
+        originalName ?? 'image',
+        data.filename,
+        data.alt,
+        keywordsStr,
+        data.title,
+        data.caption,
+      ],
+    ];
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download =
+      (originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-export') +
+      '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Version sans dépendance: crée un fichier texte contenant tous les livrables
+  async function downloadSeoPack() {
+    const packParts: string[] = [];
+
+    packParts.push('=== TAGOS — PACK SEO ===\n');
+
+    packParts.push('>> FICHIER IMAGE (NOM SEO)');
+    packParts.push(data.filename + '\n');
+
+    packParts.push('>> ALT');
+    packParts.push(data.alt + '\n');
+
+    packParts.push('>> TITLE');
+    packParts.push(data.title + '\n');
+
+    packParts.push('>> LEGENDE');
+    packParts.push(data.caption + '\n');
+
+    packParts.push('>> KEYWORDS (séparés par des virgules)');
+    packParts.push(keywordsStr + '\n');
+
+    packParts.push('>> JSON-LD (structuredData.json)');
+    packParts.push(JSON.stringify(data.structuredData, null, 2) + '\n');
+
+    packParts.push('>> SITEMAP IMAGE (sitemap-image.xml)');
+    packParts.push(data.sitemapSnippet + '\n');
+
+    if (originalFile) {
+      packParts.push(
+        'NOTE: Téléchargez l’image renommée via le bouton “Télécharger l’image optimisée”.'
+      );
+    } else {
+      packParts.push(
+        'NOTE: Aucune image source attachée. Renommez votre fichier local avec le nom SEO ci-dessus.'
+      );
+    }
+
+    const content = packParts.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const base = originalName ? originalName.replace(/\.[^.]+$/, '') : 'tagos-pack';
+    a.href = url;
+    a.download = `${base}.tagos-pack.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
 
   return (
-    <Modal open={open} onClose={onClose} title="Comment intégrer vos livrables Tagos ?">
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4">
+    <div className="card p-6 shadow-lg mx-auto max-w-3xl" data-reveal>
+      {/* En-tête + CTA d’aide */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-slate-500">Résultats prêts à intégrer dans votre CMS</div>
         <button
-          onClick={() => setTab('cms')}
-          className={'px-3 py-1.5 rounded-md text-sm ' + (tab === 'cms' ? 'bg-indigo-600 text-white' : 'bg-slate-100')}
+          onClick={onOpenHelp || (() => {})}
+          className="text-sm underline underline-offset-2 hover:text-indigo-700"
         >
-          Intégrer dans le CMS
-        </button>
-        <button
-          onClick={() => setTab('zip')}
-          className={'px-3 py-1.5 rounded-md text-sm ' + (tab === 'zip' ? 'bg-indigo-600 text-white' : 'bg-slate-100')}
-        >
-          Pack ZIP
+          Comment utiliser ?
         </button>
       </div>
 
-      {tab === 'cms' ? (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            Voici comment utiliser les <strong>4 livrables principaux</strong> : <em>nom de fichier</em>, <em>ALT</em>, <em>TITLE</em>, <em>légende</em>.
-          </p>
-
-          <Accordion title="WordPress (Médiathèque)">
-            <ol className="list-decimal ml-5 space-y-1">
-              <li>Téléversez l’image optimisée (ou renommez d’abord le fichier local avec le <em>nom SEO</em> proposé).</li>
-              <li>Dans la colonne droite, champ <strong>Texte alternatif</strong> → collez l’ALT Tagos.</li>
-              <li>Champ <strong>Titre</strong> (facultatif) → collez le TITLE.</li>
-              <li>Si vous affichez une légende sous l’image → champ <strong>Légende</strong>.</li>
-            </ol>
-          </Accordion>
-
-          <Accordion title="Shopify (fiches produits, images thème)">
-            <ol className="list-decimal ml-5 space-y-1">
-              <li>Importez l’image dans <strong>Contenu &gt; Fichiers</strong> ou directement sur la fiche produit.</li>
-              <li>Assurez-vous d’utiliser le <strong>nom de fichier</strong> optimisé.</li>
-              <li>Dans la fiche produit, <strong>Description de l’image (ALT)</strong> → collez l’ALT Tagos.</li>
-              <li>La <strong>Légende</strong> peut être ajoutée dans la description produit (champ riche) si vous l’affichez.</li>
-            </ol>
-          </Accordion>
-
-          <Accordion title="Webflow">
-            <ol className="list-decimal ml-5 space-y-1">
-              <li>Importez l’image dans l’Asset Manager avec le <strong>nom</strong> optimisé.</li>
-              <li>Dans les réglages de l’image, remplissez le <strong>ALT</strong> et (si utile) le <strong>TITLE</strong>.</li>
-              <li>Ajoutez la <strong>Légende</strong> dans le bloc texte sous l’image si votre design l’affiche.</li>
-            </ol>
-          </Accordion>
-
-          <Accordion title="Données structurées (JSON-LD) & Sitemap image">
-            <ul className="list-disc ml-5 space-y-1">
-              <li><strong>JSON-LD</strong> : copiez le bloc et collez-le dans le HTML de la page (entre <code>&lt;script type="application/ld+json"&gt;</code> et <code>&lt;/script&gt;</code>), ou via votre plugin SEO (WP Rocket/Yoast/RankMath).</li>
-              <li><strong>Sitemap image</strong> : ajoutez le snippet XML dans votre sitemap (ou un sitemap dédié images) puis soumettez-le dans la Search Console.</li>
-            </ul>
-          </Accordion>
+      {/* Avant / Après (live) */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-slate-200 p-3 bg-white">
+          <div className="text-xs text-slate-500 mb-2">Avant</div>
+          <div className="aspect-square rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt="aperçu avant"
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div className="text-xs text-slate-400">Aperçu indisponible</div>
+            )}
+          </div>
+          <div className="mt-2 text-[11px] text-slate-500 truncate">
+            {originalName || 'image'}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            Le <strong>Pack ZIP</strong> contient : l’image optimisée, <em>ALT</em>, <em>TITLE</em>, <em>Légende</em>, <code>structuredData.json</code> et le snippet <code>sitemap-image.xml</code>.
-          </p>
-          <p className="text-sm text-slate-600">
-            Téléchargez-le puis intégrez chaque élément selon votre CMS (onglet précédent).
-          </p>
+
+        <div className="rounded-xl border border-slate-200 p-3 bg-white">
+          <div className="text-xs text-slate-500 mb-2">Après (Tagos)</div>
+          <div className="aspect-square rounded-lg overflow-hidden border bg-slate-50 grid place-items-center">
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt={data.alt || 'image optimisée'}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div className="text-xs text-slate-400">Aperçu indisponible</div>
+            )}
+          </div>
+          <div className="mt-2 text-[11px] text-slate-500 truncate">
+            {data.filename}
+          </div>
         </div>
-      )}
-    </Modal>
+      </div>
+
+      {/* Boutons principaux */}
+      <div className="mt-5 flex flex-wrap gap-2">
+        <button
+          onClick={downloadRenamed}
+          className="btn btn-primary shadow-md shadow-indigo-600/20"
+        >
+          Télécharger l’image optimisée
+        </button>
+        <button onClick={downloadSeoPack} className="btn">
+          Télécharger le pack SEO
+        </button>
+        <button onClick={downloadCsv} className="btn">
+          Export CSV
+        </button>
+      </div>
+
+      {/* Livrables détaillés */}
+      <div className="mt-6 grid gap-4">
+        <div>
+          <div className="text-sm font-medium mb-1">Texte ALT</div>
+          <div className="text-sm text-slate-700 whitespace-pre-wrap">{data.alt}</div>
+          <div className="mt-2">
+            <button onClick={() => copy(data.alt)} className="btn">Copier l’ALT</button>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-sm font-medium mb-1">Mots-clés</div>
+          <div className="text-sm text-slate-700">{keywordsStr}</div>
+          <div className="mt-2">
+            <button onClick={() => copy(keywordsStr)} className="btn">Copier les mots-clés</button>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="card p-4">
+            <div className="text-sm font-medium mb-1">Titre</div>
+            <div className="text-sm text-slate-700">{data.title}</div>
+            <div className="mt-2">
+              <button onClick={() => copy(data.title)} className="btn">Copier le titre</button>
+            </div>
+          </div>
+          <div className="card p-4">
+            <div className="text-sm font-medium mb-1">Légende</div>
+            <div className="text-sm text-slate-700">{data.caption}</div>
+            <div className="mt-2">
+              <button onClick={() => copy(data.caption)} className="btn">Copier la légende</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="text-sm font-medium mb-1">Nom de fichier SEO</div>
+          <div className="text-sm text-slate-700">{data.filename}</div>
+          <div className="mt-2">
+            <button onClick={() => copy(data.filename)} className="btn">Copier le nom</button>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="text-sm font-medium mb-1">Données structurées (JSON-LD)</div>
+          <textarea
+            readOnly
+            className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
+            value={JSON.stringify(data.structuredData, null, 2)}
+          />
+          <div className="mt-2">
+            <button
+              onClick={() => copy(JSON.stringify(data.structuredData, null, 2))}
+              className="btn"
+            >
+              Copier JSON-LD
+            </button>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="text-sm font-medium mb-1">Sitemap images (XML)</div>
+          <textarea
+            readOnly
+            className="w-full h-40 rounded-md border border-slate-300 p-2 text-xs"
+            value={data.sitemapSnippet}
+          />
+          <div className="mt-2">
+            <button onClick={() => copy(data.sitemapSnippet)} className="btn">Copier XML</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Note d’aide */}
+      <p className="mt-3 text-[12px] text-slate-500">
+        Astuce : renommez votre fichier avec un nom descriptif clair. Les CMS et Google comprennent mieux le contenu.
+      </p>
+    </div>
   );
 }
