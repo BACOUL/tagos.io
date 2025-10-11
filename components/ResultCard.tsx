@@ -308,4 +308,4 @@ export default function ResultCard(props: Props) {
     </div>
   );
 }
-```0
+
